@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="app.yike.focus.preview"
+    android:versionCode="6"
+    android:versionName="0.2.0">
+    <uses-sdk android:minSdkVersion="26" android:targetSdkVersion="34" />
+    <application
+        android:allowBackup="false"
+        android:debuggable="true"
+        android:icon="@mipmap/yike_launcher"
+        android:label="@string/app_name"
+        android:theme="@style/YikeTheme">
+        <activity
+            android:name="app.yike.focus.MainActivity"
+            android:configChanges="keyboardHidden|orientation|screenSize"
+            android:enableOnBackInvokedCallback="false"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+    </application>
+</manifest>

@@ -1,0 +1,8 @@
+/android/build/
+/release/
+*.jks
+*.p12
+*.keystore
+*.clixml
+.env
+local.properties
