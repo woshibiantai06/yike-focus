@@ -59,6 +59,10 @@ $stagedPage = Join-Path $assets 'index.html'
 Copy-Item -LiteralPath $sourcePage -Destination $stagedPage
 Copy-Item -LiteralPath $appIcon -Destination (Join-Path $launcher 'yike_launcher.png')
 Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'res/values/app.xml') -Destination (Join-Path $resources 'values/app.xml')
+$drawable = New-Item -ItemType Directory -Force -Path (Join-Path $resources 'drawable')
+Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'res/drawable/ic_timer_status.xml') -Destination $drawable.FullName
+$raw = New-Item -ItemType Directory -Force -Path (Join-Path $resources 'raw')
+Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'res/raw/break_bell.wav') -Destination $raw.FullName
 $manifest = Join-Path $PSScriptRoot 'AndroidManifest.xml'
 if ($PublicBeta) {
     [xml]$manifestXml = Get-Content -LiteralPath $manifest -Raw
@@ -75,8 +79,9 @@ $signed = Join-Path $build 'yike-preview.apk'
 Invoke-BuildTool $aapt @('compile', '--dir', $resources, '-o', $resourceArchive)
 Invoke-BuildTool $aapt @('link', '-I', $androidJar, '--manifest', $manifest, '--custom-package', 'app.yike.focus',
     '-A', $assets, '--java', $generated, '-o', $unsigned, $resourceArchive)
-Invoke-BuildTool $javac @('--release', '8', '-encoding', 'UTF-8', '-classpath', $androidJar, '-d', $classes,
-    (Join-Path $PSScriptRoot 'src/MainActivity.java'), (Join-Path $generated 'app/yike/focus/R.java'))
+$javaSources = @(Get-ChildItem -LiteralPath (Join-Path $PSScriptRoot 'src') -File -Filter '*.java' | ForEach-Object FullName)
+Invoke-BuildTool $javac (@('--release', '8', '-encoding', 'UTF-8', '-classpath', $androidJar, '-d', $classes,
+    (Join-Path $generated 'app/yike/focus/R.java')) + $javaSources)
 $classFiles = @(Get-ChildItem -LiteralPath $classes -Filter '*.class' -Recurse | ForEach-Object FullName)
 Invoke-BuildTool $java (@('-cp', $d8, 'com.android.tools.r8.D8', '--lib', $androidJar, '--min-api', '26', '--output', $dex) + $classFiles)
 

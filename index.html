@@ -358,7 +358,16 @@
     .phase-label { max-width: 65%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 700; letter-spacing: .07em; }
     .time { margin-inline: -.015em 0; font-size: clamp(65px, 13dvh, 110px); font-weight: 850; font-variant-numeric: tabular-nums; letter-spacing: -.04em; line-height: 1.02; }
     .time.long-time { font-size: calc(clamp(48px, 9.7dvh, 82px) * var(--clock-scale, 1)); }
-    .timer-actions { position: relative; display: flex; justify-content: center; }
+    .timer-actions {
+      display: grid; grid-template-columns: 36px minmax(0, 1fr) 36px; align-items: center;
+      gap: 8px; width: min(100%, 335px);
+    }
+    .timer-buttons {
+      display: grid; grid-column: 2; grid-template-columns: minmax(0, 1fr) minmax(0, 0fr);
+      gap: 0;
+      transition: grid-template-columns .38s var(--ease), gap .38s var(--ease);
+    }
+    .timer-actions[data-state="paused"] .timer-buttons { grid-template-columns: minmax(0, 1fr) minmax(0, .78fr); gap: 8px; }
     .primary {
       display: inline-flex; align-items: center; justify-content: center; gap: 10px; padding: 0 17px;
       min-height: 41px; border: 1px solid transparent; border-radius: 14px; background: var(--accent);
@@ -367,25 +376,44 @@
     }
     .primary:hover { background: color-mix(in srgb, var(--accent), white 30%); }
     .timer-actions .primary {
-      min-height: 53px; min-width: 166px; border-radius: 999px; background: #fff9f5; color: var(--button-ink);
+      position: relative; min-height: 53px; min-width: 0; border-radius: 999px; background: #fff9f5; color: var(--button-ink);
       font-size: 16px; box-shadow: 0 4px 0 #2b071534, 0 9px 22px #26091532;
     }
     .timer-actions .primary:hover { background: #fff; transform: translateY(-1px); box-shadow: 0 5px 0 #2b071534, 0 11px 24px #2609153f; }
     .timer-actions .primary:active { transform: translateY(3px); box-shadow: 0 1px 0 #2b071534, 0 3px 7px #26091528; }
-    .timer-actions .icon-button { position: absolute; left: calc(100% + 10px); min-height: 41px; top: 6px; border-radius: 50%; }
-    .timer-actions[data-can-finish="true"] { align-items: center; gap: 8px; }
-    .timer-actions[data-can-finish="true"] .primary { min-width: 140px; }
-    .timer-actions[data-can-finish="true"] .icon-button { position: static; }
-    #finish-timer { min-height: 41px; border-radius: 999px; padding-inline: 13px; white-space: nowrap; }
-    .ico.check { width: 13px; height: 8px; flex-basis: 13px; border: solid currentColor; border-width: 0 0 1.8px 1.8px; border-radius: 1px; transform: translateY(-1px) rotate(-45deg); }
-    .timer-footer {
-      width: 100%; display: flex; justify-content: space-between; align-items: center; gap: 10px;
-      margin-top: 29px; border-top: 1px solid var(--outline); padding-top: 13px; color: var(--muted); font-size: 12px;
+    .timer-actions .icon-button { grid-column: 3; width: 36px; min-height: 36px; border-radius: 50%; }
+    .timer-actions .icon-button:disabled { visibility: hidden; }
+    #toggle-timer { touch-action: manipulation; user-select: none; white-space: nowrap; padding-inline: 8px; }
+    #finish-timer {
+      min-width: 0; min-height: 46px; padding-inline: 0; border-radius: 999px; overflow: hidden;
+      white-space: nowrap; opacity: 0; visibility: hidden; pointer-events: none;
+      transition: opacity .25s var(--ease), visibility 0s linear .25s, transform .2s var(--ease);
     }
-    .session-task { display: flex; align-items: center; gap: 8px; min-width: 0; text-align: left; }
-    .session-task strong { color: var(--ink); overflow-wrap: anywhere; font-size: 13px; }
-    .session-task span:first-of-type, .timer-footer > span { flex-shrink: 0; }
-    .timer-footer > span { margin-left: auto; }
+    .timer-actions[data-state="paused"] #finish-timer {
+      opacity: 1; visibility: visible; pointer-events: auto; transition-delay: 0s;
+    }
+    .hold-ring { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; overflow: visible; }
+    .hold-ring rect {
+      x: 1.6px; y: 1.6px; width: calc(100% - 3.2px); height: calc(100% - 3.2px); rx: 28px;
+      stroke: currentColor; stroke-width: 2.7px; fill: none; opacity: 0; stroke-dasharray: 100; stroke-dashoffset: 100;
+    }
+    #toggle-timer[data-holding] .hold-ring rect { opacity: .9; animation: trace-hold var(--hold-time) linear forwards; }
+    @keyframes trace-hold { to { stroke-dashoffset: 0; } }
+    .hold-hint { color: var(--muted); font-size: 11px; margin-top: 10px; min-height: 17px; }
+    .ico.stop { width: 10px; height: 10px; flex-basis: 10px; border-radius: 2px; background: currentColor; }
+    .timer-footer {
+      width: 100%; display: flex; justify-content: space-between; align-items: center; gap: 9px;
+      margin-top: 17px; border: 1px solid var(--outline); border-radius: 17px; padding: 11px 13px;
+      background: var(--softer); color: var(--muted); font-size: 12px; text-align: left;
+    }
+    .session-task { display: flex; align-items: center; gap: 11px; min-width: 0; }
+    .session-task-copy { display: grid; gap: 2px; min-width: 0; }
+    .session-task strong { color: var(--ink); overflow-wrap: anywhere; font-size: clamp(16px, 3.3vw, 21px); line-height: 1.25; }
+    .session-task .ico { margin-inline: 4px; }
+    .task-footer-actions { display: grid; justify-items: end; gap: 5px; flex: 0 0 auto; }
+    .assign-button { min-height: 34px; padding-inline: 9px; border-radius: 999px; white-space: nowrap; }
+    .data-list .history-controls { display: flex; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: 6px; }
+    .history-controls strong { white-space: nowrap; font-size: 13px; }
     .overview { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 16px; }
     .overview[data-single="true"] { grid-template-columns: 1fr; }
     .overview-card, .report-card { background: var(--softer); border: 1px solid var(--outline); border-radius: 19px; }
@@ -471,7 +499,29 @@
     .check-field { display: flex; align-items: center; gap: 8px; font-size: 13px; margin-bottom: 12px; }
     .check-field input { width: 17px; height: 17px; accent-color: var(--button-ink); }
     .language-field { margin-bottom: 12px; }
-    .language-field select { font: inherit; color: var(--ink); padding: 8px 10px; border: 1px solid var(--outline); border-radius: 10px; background: #fffaf8; }
+    .field select { font: inherit; color: var(--ink); padding: 8px 10px; border: 1px solid var(--outline); border-radius: 10px; background: #fffaf8; }
+    #break-alarm {
+      --alarm-color: #255c85; --alarm-light: #396e96; --alarm-ink: #e6f7ff;
+      width: 100%; max-width: none; height: 100%; max-height: none; border: 0; border-radius: 0;
+      background: radial-gradient(ellipse at 50% 40%, var(--alarm-light), transparent 72%), var(--alarm-color);
+      color: #fffaf8; box-shadow: none; padding: 24px; text-align: center;
+    }
+    #break-alarm[data-mode="long"] { --alarm-color: #286349; --alarm-light: #3d795a; --alarm-ink: #e8faec; }
+    #break-alarm[open] { display: grid; align-content: center; justify-items: center; gap: 16px; }
+    #break-alarm .primary { margin-top: 6px; color: var(--alarm-color); background: #fffaf8; min-width: 145px; border-radius: 999px; }
+    #break-alarm .primary:focus-visible { outline-color: var(--alarm-ink); }
+    .alarm-art { width: min(198px, 54vw); color: var(--alarm-ink); overflow: visible; }
+    .alarm-clock { transform-box: fill-box; transform-origin: center 83%; }
+    .alarm-lines { opacity: 0; }
+    #break-alarm[data-ringing] .alarm-clock { animation: wobble-alarm 1.9s ease-in-out var(--ring-offset, 0ms) infinite; }
+    #break-alarm[data-ringing] .alarm-lines { animation: show-alarm-lines 1.9s ease-in-out var(--ring-offset, 0ms) infinite; }
+    @keyframes wobble-alarm {
+      0%, 44%, 100% { transform: rotate(0); }
+      6%, 21% { transform: rotate(-8deg); }
+      13%, 28% { transform: rotate(8deg); }
+      36% { transform: rotate(-3deg); }
+    }
+    @keyframes show-alarm-lines { 0%, 40%, 100% { opacity: 0; } 9%, 28% { opacity: .85; } }
     .toast {
       position: fixed; right: 24px; bottom: 22px; z-index: 2; width: max-content; max-width: calc(100% - 36px);
       background: color-mix(in srgb, var(--canvas), #291326 70%); border: 1px solid var(--outline); color: var(--ink);
@@ -550,7 +600,7 @@
       .dial { width: min(272px, 100%); margin: 14px 0; }
       .time { font-size: 80px; }
       .time.long-time { font-size: calc(57px * var(--clock-scale, 1)); }
-      .timer-footer { margin-top: 20px; padding-top: 10px; }
+      .timer-footer { margin-top: 12px; padding: 9px 10px; }
       .overview { gap: 7px; margin-top: 11px; }
       .overview-card { padding: 9px; }
       .overview-card strong { font-size: 18px; }
@@ -581,7 +631,9 @@
       *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; }
       .launch { display: none; }
       .dial-scale, .dial-completion, .dial-completion-ring, .dial-completion-check, .dial-completion-mark,
+      #break-alarm[data-ringing] :is(.alarm-clock, .alarm-lines),
       .dial[data-complete="true"] :is(.dial-marks, .dial-cursor, .dial-inner) { animation: none; }
+      #toggle-timer[data-holding] .hold-ring rect { animation: none; stroke-dashoffset: 0; opacity: .5; }
     }
   </style>
 </head>
@@ -665,14 +717,17 @@
               </svg>
             </div>
           </div>
-          <div class="timer-actions" id="timer-actions">
-            <button type="button" class="primary" id="toggle-timer"><i class="ico play" id="toggle-icon" aria-hidden="true"></i><span id="toggle-label">开始专注</span></button>
-            <button type="button" class="text-button" id="finish-timer" hidden><i class="ico check" aria-hidden="true"></i>完成</button>
+          <div class="timer-actions" id="timer-actions" data-state="idle">
+            <div class="timer-buttons">
+              <button type="button" class="primary" id="toggle-timer"><svg class="hold-ring" aria-hidden="true"><rect pathLength="100"/></svg><i class="ico play" id="toggle-icon" aria-hidden="true"></i><span id="toggle-label">开始专注</span></button>
+              <button type="button" class="text-button" id="finish-timer" disabled><i class="ico stop" aria-hidden="true"></i>结束</button>
+            </div>
             <button type="button" class="icon-button" id="reset-timer" aria-label="重置计时" title="重置计时" disabled><i class="ico reset" aria-hidden="true"></i></button>
           </div>
+          <p class="hold-hint" id="hold-hint"></p>
           <div class="timer-footer">
-            <div class="session-task" id="next-task" hidden><i class="ico tasks-icon" aria-hidden="true"></i><span>下一轮任务</span><strong id="session-task">未选择</strong></div>
-            <span id="mode-duration">25 分钟</span>
+            <div class="session-task" id="next-task"><i class="ico tasks-icon" aria-hidden="true"></i><div class="session-task-copy"><span id="session-task-label">当前任务</span><strong id="session-task">自由专注</strong></div></div>
+            <div class="task-footer-actions"><span id="mode-duration">25 分钟</span><button class="text-button assign-button" id="assign-recent" type="button" hidden>补任务</button></div>
           </div>
         </div>
         <div class="overview" id="timer-overview">
@@ -714,7 +769,7 @@
           <p class="report-subtitle" id="history-filter" aria-live="polite" hidden></p>
           <p class="empty" id="history-empty">完成一轮专注后，记录会出现在这里。</p><ul class="data-list" id="history" hidden></ul>
         </section>
-        <p class="report-footnote">统计按专注完成时间归档。只累计完整完成的专注轮次。</p>
+        <p class="report-footnote">按结束时间归档。提前结束的专注按实际时长计入报告。</p>
       </section>
     </main>
   </div>
@@ -744,6 +799,7 @@
       </div>
       <label class="check-field"><input type="checkbox" id="sounds">计时开始、暂停和完成音</label>
       <label class="check-field"><input type="checkbox" id="button-sounds">按钮轻触音</label>
+      <label class="check-field" id="floating-field" hidden><input type="checkbox" id="floating-timer">在其他应用上显示悬浮计时</label>
       <label class="field language-field">语言 / Language
         <select id="language"><option value="zh" lang="zh-CN">简体中文</option><option value="en" lang="en">English</option></select>
       </label>
@@ -756,6 +812,33 @@
     <p class="report-subtitle" id="confirm-detail">这轮已经经过的时间将清零。</p>
     <div class="dialog-actions"><button type="button" class="soft-button" data-close autofocus>继续本轮</button><button type="button" class="primary" id="confirm-action">重置计时</button></div>
   </dialog>
+  <dialog id="assign-dialog" aria-labelledby="assign-title">
+    <form id="assign-form">
+      <div class="dialog-header"><h2 id="assign-title">补记任务</h2><button type="button" class="icon-button small" data-close aria-label="关闭"><i class="ico close" aria-hidden="true"></i></button></div>
+      <p class="report-subtitle" id="assign-detail"></p>
+      <label class="field">关联任务<select id="assign-choice"></select></label>
+      <label class="field">新任务名称<input id="assign-name" maxlength="60" placeholder="例如：写完文章开头"></label>
+      <div class="dialog-actions"><button type="button" class="soft-button" data-close>取消</button><button type="submit" class="primary">保存任务</button></div>
+    </form>
+  </dialog>
+  <dialog id="break-alarm" aria-labelledby="break-alarm-title">
+    <svg class="alarm-art" viewBox="0 0 200 178" fill="none" aria-hidden="true">
+      <g class="alarm-lines" stroke="currentColor" stroke-width="4" stroke-linecap="round">
+        <path d="M43 39 29 30 M38 52 20 51 M157 39 171 30 M162 52 180 51"/>
+      </g>
+      <g class="alarm-clock">
+        <path d="M63 128 53 150 M137 128 147 150 M100 40V27" stroke="currentColor" stroke-width="9" stroke-linecap="round"/>
+        <path d="M51 55 Q41 42 56 31 Q71 20 82 33 L51 55Z M149 55 Q159 42 144 31 Q129 20 118 33 L149 55Z" fill="currentColor"/>
+        <circle cx="100" cy="92" r="52" fill="currentColor" fill-opacity=".16" stroke="currentColor" stroke-width="6"/>
+        <circle cx="100" cy="92" r="41" stroke="currentColor" stroke-opacity=".22" stroke-width="1.5"/>
+        <path d="M100 67v25l17 10" stroke="currentColor" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+        <circle cx="100" cy="92" r="3.5" fill="currentColor"/>
+      </g>
+    </svg>
+    <h2 id="break-alarm-title">休息结束</h2>
+    <p>准备好就开始下一轮专注。</p>
+    <button type="button" class="primary" id="dismiss-break-alarm">关闭闹钟</button>
+  </dialog>
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
   <script>
     'use strict';
@@ -765,6 +848,9 @@
     const LEGACY_STORAGE_KEY = 'yike-focus-v1';
     const MINUTE = 60_000;
     const CYCLE_SIZE = 4;
+    const HOLD_TIME = 800;
+    const BREAK_RING_TIME = 3 * MINUTE;
+    const nativeTimer = window.YikeAndroid;
     const defaultSettings = { focus: 25, short: 5, long: 15, rest: 10, sound: true, buttonSound: true };
     const englishMarkup = {
       '一刻': 'Yike', '番茄钟': 'Focus timer', '工作台侧栏': 'Workspace sidebar',
@@ -773,7 +859,7 @@
       '给任务起个名字，写下要做的事。': 'Name the task and add a note.',
       '倒计时': 'Countdown', '正向计时': 'Count up', '专注报告': 'Focus report',
       '设置': 'Settings', '番茄计时器': 'Focus timer', '计时模式': 'Timer modes', '专注': 'Focus',
-      '短休息': 'Short break', '长休息': 'Long break', '休息': 'Break', '完成': 'Finish',
+      '短休息': 'Short break', '长休息': 'Long break', '休息': 'Break', '结束': 'End',
       '重置计时': 'Reset timer', '下一轮任务': 'Next task', '今日专注': 'Focus today',
       '本组进度': 'Cycle progress', '重置本组进度': 'Reset cycle progress', '重置': 'Reset',
       '报告统计周期': 'Report period', '日': 'Day', '周': 'Week', '月': 'Month', '年': 'Year',
@@ -781,13 +867,17 @@
       '专注时长': 'Focus time', '完成轮次': 'Sessions', '涉及任务': 'Tasks', '专注趋势': 'Focus trend',
       '按任务统计': 'By task', '这个周期还没有专注记录。': 'No focus sessions in this period.',
       '专注记录': 'Session history', '查看全部': 'Show all',
-      '统计按专注完成时间归档。只累计完整完成的专注轮次。': 'Reports group completed focus sessions by their finish time.',
+      '按结束时间归档。提前结束的专注按实际时长计入报告。': 'Reports use the finish time and include time spent on sessions ended early.',
+      '补任务': 'Add task', '补记任务': 'Add a task to this session', '关联任务': 'Task', '新任务名称': 'New task name',
+      '休息结束': 'Break over', '准备好就开始下一轮专注。': 'Start your next focus session when you’re ready.',
+      '关闭闹钟': 'Dismiss alarm',
       '关闭': 'Close', '任务名称': 'Task name', '备注': 'Note', '选填，最多 240 字': 'Optional, up to 240 characters',
       '例如：写完文章开头': 'e.g. Draft the introduction',
       '写下这一轮想完成的具体事项': 'What would you like to finish?',
       '删除任务': 'Delete task', '删除任务？': 'Delete this task?', '取消': 'Cancel', '保存任务': 'Save task',
       '计时设置': 'Timer settings', '每个阶段的时长（分钟）': 'Duration in minutes',
       '计时开始、暂停和完成音': 'Timer sounds', '按钮轻触音': 'Button sounds',
+      '在其他应用上显示悬浮计时': 'Floating timer over other apps',
       '保存设置': 'Save settings', '继续本轮': 'Keep session'
     };
     const localizedNodes = [];
@@ -831,6 +921,12 @@
     let switchAnimation;
     let toastTimeout;
     let displayedDay = '';
+    let assigningRecordId;
+    let recentUnassigned;
+    let hold;
+    let suppressHoldClick = false;
+    let lastRingBeat = -1;
+    let breakAudioGain;
 
     const tr = (zh, en) => english ? en : zh;
     const countLabel = (count, unit) => `${count} ${unit}${count === 1 ? '' : 's'}`;
@@ -860,6 +956,15 @@
       return { kind, mode, status: 'idle', duration, remaining: duration, elapsed: 0, resumedAt: null, endAt: null, id: null, taskId: null, taskName: null };
     }
 
+    function timerForPhase(mode, kind) {
+      if (mode === 'focus' && kind === 'countup' && state.pausedFocus) {
+        const timer = state.pausedFocus;
+        delete state.pausedFocus;
+        return timer;
+      }
+      return idleTimer(mode, state.settings, kind);
+    }
+
     function loadState() {
       try {
         const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? localStorage.getItem(LEGACY_STORAGE_KEY) ?? 'null');
@@ -886,6 +991,27 @@
       byId('storage-label').textContent = canSave
         ? tr(android ? '记录保存在此手机' : '记录保存在此浏览器', android ? 'Saved on this device' : 'Saved in this browser')
         : tr('暂时无法保存记录，请保持页面开启', 'Unable to save. Keep this page open.');
+      syncNativeTimer();
+    }
+
+    function syncNativeTimer() {
+      if (!nativeTimer) return;
+      const { status, mode, id, resumedAt, elapsed, endAt } = state.timer;
+      const countingUp = isCountUpFocus();
+      const rest = mode !== 'focus';
+      nativeTimer.updateTimer(JSON.stringify({
+        id, status, rest, endAt, english, sound: state.settings.sound, countdown: !countingUp,
+        when: countingUp ? resumedAt - elapsed : endAt,
+        title: modeNames[mode],
+        detail: status === 'paused'
+          ? tr(`已暂停 · ${timerText()}`, `Paused · ${timerText()}`)
+          : tr('点击打开一刻', 'Tap to open Yike')
+      }));
+    }
+
+    function updateFloatingSetting() {
+      byId('floating-field').hidden = !nativeTimer;
+      if (nativeTimer) byId('floating-timer').checked = nativeTimer.floatingEnabled();
     }
 
     function newId() {
@@ -986,6 +1112,7 @@
     }
 
     function handleAppBack() {
+      if (byId('break-alarm').open) return true;
       const dialogs = document.querySelectorAll('dialog[open]');
       const dialog = dialogs[dialogs.length - 1];
       if (dialog) {
@@ -1059,13 +1186,17 @@
       if (canAnimateDial()) dialFrame = requestAnimationFrame(animateDial);
     }
 
-    function renderClock(now = Date.now()) {
+    function timerText(now = Date.now()) {
       const countingUp = isCountUpFocus();
       const seconds = countingUp ? Math.floor(elapsedTime(now) / 1000) : Math.ceil(remainingTime(now) / 1000);
       const minutes = Math.floor(seconds / 60);
       const hours = countingUp && minutes >= 60 ? Math.floor(minutes / 60) : 0;
       const padded = (value) => String(value).padStart(2, '0');
-      const clock = `${hours ? `${hours}:` : ''}${padded(hours ? minutes % 60 : minutes)}:${padded(seconds % 60)}`;
+      return `${hours ? `${hours}:` : ''}${padded(hours ? minutes % 60 : minutes)}:${padded(seconds % 60)}`;
+    }
+
+    function renderClock(now = Date.now()) {
+      const clock = timerText(now);
       const time = byId('remaining');
       if (time.textContent !== clock) {
         time.textContent = clock;
@@ -1083,7 +1214,6 @@
       const { kind, mode, status, duration, taskName } = state.timer;
       const countup = kind === 'countup';
       const countingUp = isCountUpFocus();
-      const canFinish = countingUp && status !== 'idle';
       const headline = byId('timer-kind');
       headline.dataset.kind = kind;
       const nextKind = countup ? kindNames.countdown : kindNames.countup;
@@ -1108,12 +1238,22 @@
         running: tr('暂停', 'Pause'), paused: tr('继续', 'Resume')
       }[status];
       byId('toggle-icon').className = `ico ${status === 'running' ? 'pause' : 'play'}`;
-      byId('finish-timer').hidden = !canFinish;
-      byId('timer-actions').dataset.canFinish = canFinish;
+      byId('finish-timer').disabled = status !== 'paused';
+      byId('timer-actions').dataset.state = status;
+      byId('hold-hint').textContent = status === 'running' ? tr('轻点暂停 · 长按结束', 'Tap to pause · Hold to end') : '';
+      if (status === 'running') byId('toggle-timer').setAttribute('aria-describedby', 'hold-hint');
+      else byId('toggle-timer').removeAttribute('aria-describedby');
       byId('reset-timer').disabled = status === 'idle';
       byId('mode-duration').textContent = countingUp ? tr('不限时', 'No time limit') : minutesText(duration / MINUTE);
-      byId('next-task').hidden = mode === 'focus';
-      byId('session-task').textContent = nextTaskName ?? tr('未选择', 'None selected');
+      const restingSession = mode !== 'focus' ? state.pausedFocus : null;
+      byId('session-task-label').textContent = mode !== 'focus'
+        ? restingSession ? tr('暂停中的任务', 'Paused task') : tr('下一轮任务', 'Next task')
+        : status === 'idle' ? tr('当前任务', 'Current task') : tr('本轮任务', 'This session');
+      const displayedTask = restingSession ? restingSession.taskName : mode === 'focus' ? focusName : nextTaskName;
+      byId('session-task').textContent = displayedTask ?? tr('自由专注', 'Free focus');
+      const lastRecord = state.records.at(-1);
+      recentUnassigned = lastRecord && !lastRecord.taskId && !lastRecord.taskName ? lastRecord : null;
+      byId('assign-recent').hidden = !recentUnassigned;
       byId('cycle-card').hidden = countup;
       byId('timer-overview').dataset.single = countup;
       renderGroup();
@@ -1176,7 +1316,7 @@
       if (state.settings.buttonSound) playClick(confirmed ? .34 : .21, confirmed ? 1.14 : 1.38);
     }
 
-    function playBell() {
+    function playBell(destination = audioContext?.destination) {
       if (!audioContext) return;
       const start = audioContext.currentTime;
       [659, 880, 988].forEach((frequency, index) => {
@@ -1188,7 +1328,7 @@
         gain.gain.setValueAtTime(.0001, at);
         gain.gain.exponentialRampToValueAtTime(.14, at + .025);
         gain.gain.exponentialRampToValueAtTime(.0001, at + .39);
-        note.connect(gain).connect(audioContext.destination);
+        note.connect(gain).connect(destination);
         note.start(at);
         note.stop(at + .4);
       });
@@ -1208,37 +1348,93 @@
       completionTimeout = setTimeout(hideCompletion, 1520);
     }
 
-    function completeTimer(now = Date.now()) {
+    function syncBreakAlarm(now = Date.now()) {
+      const dialog = byId('break-alarm');
+      const alert = state.breakAlert;
+      if (alert && nativeTimer?.dismissedAlarm() === alert.id) {
+        delete state.breakAlert;
+        saveState();
+      }
+      if (!state.breakAlert) {
+        breakAudioGain?.disconnect();
+        breakAudioGain = undefined;
+        if (dialog.open) dialog.close();
+        return;
+      }
+      dialog.dataset.mode = alert.mode;
+      const elapsed = Math.max(0, now - (alert.ringUntil - BREAK_RING_TIME));
+      if (!dialog.open) {
+        dialog.style.setProperty('--ring-offset', `${-(elapsed % 1900)}ms`);
+        dialog.showModal();
+      }
+      const ringing = now < alert.ringUntil;
+      dialog.toggleAttribute('data-ringing', ringing);
+      const beat = Math.floor(elapsed / 1900);
+      if (nativeTimer || !ringing || beat === lastRingBeat) return;
+      lastRingBeat = beat;
+      if (state.settings.sound && audioContext?.state === 'running') {
+        if (!breakAudioGain) {
+          breakAudioGain = audioContext.createGain();
+          breakAudioGain.connect(audioContext.destination);
+        }
+        playBell(breakAudioGain);
+      }
+      navigator.vibrate?.([180, 100, 180]);
+    }
+
+    function dismissBreakAlarm() {
+      const alert = state.breakAlert;
+      if (!alert) return;
+      nativeTimer?.dismissAlarm(alert.id);
+      if (!nativeTimer) navigator.vibrate?.(0);
+      delete state.breakAlert;
+      saveState();
+      syncBreakAlarm();
+    }
+
+    function completeTimer(now = Date.now(), early = false) {
       const finished = state.timer;
       const countingUp = isCountUpFocus(finished);
       let nextMode = 'focus';
       let message = tr('休息结束，可以开始下一轮。', 'Break over. Ready for the next session.');
+      const timedBreak = finished.mode !== 'focus' && !early;
       if (finished.mode === 'focus') {
         const { id, taskId, taskName, reportTaskName, kind } = finished;
-        const duration = countingUp ? elapsedTime(now) : finished.duration;
-        state.records.push({ id, taskId, taskName, reportTaskName, kind, duration, endAt: countingUp ? now : finished.endAt });
+        const duration = countingUp ? elapsedTime(now) : early ? finished.duration - remainingTime(now) : finished.duration;
+        if (duration > 0) state.records.push({ id, taskId, taskName, reportTaskName, kind, duration, endAt: early ? now : finished.endAt });
         const name = taskName ? tr(`「${taskName}」`, `“${taskName}” · `) : '';
         if (countingUp) {
           nextMode = 'rest';
           message = tr(`${name}已专注 ${durationText(duration)}，可以休息了。`, `${name}Focused for ${durationText(duration)}. Time for a break.`);
-        } else {
+        } else if (!early) {
           state.cycle += 1;
           nextMode = state.cycle === CYCLE_SIZE ? 'long' : 'short';
           message = tr(`${name}完成 1 个番茄，可以${modeNames[nextMode]}了。`, `${name}Session complete. Time for a ${modeNames[nextMode].toLowerCase()}.`);
+        } else {
+          nextMode = 'short';
+          message = tr(`${name}已记录 ${durationText(duration)}，可以休息了。`, `${name}Logged ${durationText(duration)}. Time for a short break.`);
         }
       } else if (finished.mode === 'long' && state.cycle === CYCLE_SIZE) {
         state.cycle = 0;
       }
-      state.timer = idleTimer(nextMode, state.settings, finished.kind);
+      if (timedBreak) {
+        state.breakAlert = { id: finished.id, mode: finished.mode, ringUntil: finished.endAt + BREAK_RING_TIME };
+        lastRingBeat = -1;
+        nativeTimer?.ringBreak(finished.id, state.breakAlert.ringUntil, state.settings.sound, english);
+      }
+      state.timer = timerForPhase(nextMode, finished.kind);
       if (byId('confirm-dialog').open) byId('confirm-dialog').close();
       saveState();
       renderTimer();
       renderToday();
       if (view === 'report') renderReport();
-      showCompletion();
-      if (state.settings.sound) {
-        if (countingUp) unlockAudio();
-        if (countingUp || audioContext?.state === 'running') playBell();
+      if (timedBreak) syncBreakAlarm(now);
+      else {
+        showCompletion();
+        if (state.settings.sound) {
+          if (early) unlockAudio();
+          if (early || audioContext?.state === 'running') playBell();
+        }
       }
       showToast(message);
     }
@@ -1246,8 +1442,20 @@
     function settleTimer(now = Date.now()) {
       const { status, endAt } = state.timer;
       if (status !== 'running' || endAt === null || endAt > now) return false;
-      completeTimer();
+      completeTimer(now);
       return true;
+    }
+
+    function pauseTimer(now) {
+      const timer = state.timer;
+      if (isCountUpFocus()) {
+        timer.elapsed = elapsedTime(now);
+        timer.resumedAt = null;
+      } else {
+        timer.remaining = remainingTime(now);
+        timer.endAt = null;
+      }
+      timer.status = 'paused';
     }
 
     function toggleTimer() {
@@ -1261,14 +1469,7 @@
         else playClick(1, 1);
       }
       if (timer.status === 'running') {
-        if (countingUp) {
-          timer.elapsed = elapsedTime(now);
-          timer.resumedAt = null;
-        } else {
-          timer.remaining = remainingTime(now);
-          timer.endAt = null;
-        }
-        timer.status = 'paused';
+        pauseTimer(now);
       } else {
         if (timer.status === 'idle') {
           timer.id = newId();
@@ -1282,21 +1483,68 @@
         timer.status = 'running';
         if (countingUp) timer.resumedAt = now;
         else timer.endAt = now + timer.remaining;
+        nativeTimer?.requestNotifications();
       }
       saveState();
       renderTimer();
+    }
+
+    function finishTimer() {
+      const now = Date.now();
+      if (state.timer.status === 'idle' || settleTimer(now)) return;
+      completeTimer(now, true);
+      byId('toggle-timer').focus({ preventScroll: true });
+    }
+
+    function cancelHold() {
+      if (!hold) return;
+      clearTimeout(hold.timer);
+      delete byId('toggle-timer').dataset.holding;
+      hold = undefined;
+    }
+
+    function beginHold(event) {
+      if (!event.isPrimary || event.button !== 0) return;
+      cancelHold();
+      suppressHoldClick = false;
+      if (state.timer.status === 'idle') return;
+      const button = event.currentTarget;
+      button.setPointerCapture(event.pointerId);
+      button.dataset.holding = '';
+      const session = state.timer.id;
+      hold = {
+        id: event.pointerId, x: event.clientX, y: event.clientY,
+        timer: setTimeout(() => {
+          cancelHold();
+          if (state.timer.id !== session) return;
+          suppressHoldClick = true;
+          finishTimer();
+        }, HOLD_TIME)
+      };
     }
 
     function requestTimerChange(mode, resetting = false, kind = state.timer.kind) {
       settleTimer();
       const changingKind = kind !== state.timer.kind;
       if (!resetting && !changingKind && state.timer.mode === mode) return;
+      if (!changingKind && mode === 'rest' && isCountUpFocus() && state.timer.status !== 'idle') {
+        if (state.timer.status === 'running') pauseTimer(Date.now());
+        state.pausedFocus = state.timer;
+        state.timer = idleTimer('rest', state.settings, kind);
+        saveState();
+        renderTimer();
+        showToast(tr('专注已暂停，休息后可以继续。', 'Focus paused. Resume after your break.'));
+        return;
+      }
       const destination = changingKind ? kindNames[kind] : modeNames[mode];
       const change = () => {
         if (state.timer.status !== 'idle') playButtonClick(true);
         hideCompletion();
-        if (changingKind) byId('toast').classList.remove('visible');
-        state.timer = idleTimer(mode, state.settings, kind);
+        if (changingKind) {
+          byId('toast').classList.remove('visible');
+          delete state.pausedFocus;
+        }
+        state.timer = timerForPhase(mode, kind);
         saveState();
         renderTimer();
         if (changingKind && !reducedMotion.matches) {
@@ -1309,14 +1557,16 @@
           showToast(resetting ? tr('计时已重置。', 'Timer reset.') : tr(`已切换到${destination}。`, `Switched to ${destination}.`));
         }
       };
-      if (state.timer.status === 'idle') {
+      if (state.timer.status === 'idle' && !(changingKind && state.pausedFocus)) {
         if (!resetting) change();
         return;
       }
       pendingAction = change;
       byId('confirm-title').textContent = resetting ? tr('重置当前计时？', 'Reset this timer?') : tr(`切换到${destination}？`, `Switch to ${destination}?`);
-      byId('confirm-detail').textContent = isCountUpFocus() && !resetting
-        ? tr('切换会清零这轮计时。想保存这段时间，可以先返回并点「完成」。', 'Switching clears this session. To save it, go back and choose Finish.')
+      byId('confirm-detail').textContent = changingKind && state.pausedFocus
+        ? tr('切换会清零休息前暂停的专注。', 'Switching clears the focus session paused before this break.')
+        : isCountUpFocus() && !resetting
+        ? tr('切换会清零这轮计时。想保存这段时间，可以先暂停再点「结束」。', 'Switching clears this session. To save it, pause and choose End.')
         : tr('当前这一轮将结束，已经经过的时间将清零。', 'This will end the current session and clear its elapsed time.');
       byId('confirm-action').textContent = resetting ? tr('重置计时', 'Reset timer') : tr('切换模式', 'Switch mode');
       byId('confirm-dialog').showModal();
@@ -1368,6 +1618,27 @@
       } else {
         showToast(task ? tr(`已选择「${task.name}」。`, `Selected “${task.name}”.`) : tr('已取消选择任务。', 'Task deselected.'));
       }
+    }
+
+    function updateAssignChoice() {
+      const input = byId('assign-name');
+      input.disabled = Boolean(byId('assign-choice').value);
+      input.required = !input.disabled;
+      input.closest('label').hidden = input.disabled;
+    }
+
+    function openAssignTask(record) {
+      if (!record || record.taskId || record.taskName) return;
+      assigningRecordId = record.id;
+      const date = new Date(record.endAt);
+      byId('assign-detail').textContent = `${shortDate(date)} ${clockDate.format(date)} · ${durationText(record.duration)}`;
+      const choice = byId('assign-choice');
+      choice.replaceChildren(new Option(tr('新建任务', 'Create a new task'), ''));
+      for (const task of state.tasks) choice.add(new Option(task.name, task.id));
+      byId('assign-name').value = '';
+      byId('assign-name').setCustomValidity('');
+      updateAssignChoice();
+      byId('assign-dialog').showModal();
     }
 
     function durationText(milliseconds) {
@@ -1508,12 +1779,23 @@
       const list = byId('history');
       list.replaceChildren();
       const entries = document.createDocumentFragment();
-      for (const { endAt, taskName, duration, kind } of records) {
+      for (const record of records) {
+        const { endAt, taskName, taskId, duration, kind } = record;
         const date = new Date(endAt);
         const finishedAt = `${shortDate(date)} ${clockDate.format(date)}`;
         const detail = english ? finishedAt : `${finishedAt} 完成`;
         const kindDetail = kind === 'countup' ? ` · ${kindNames.countup}` : '';
-        entries.append(reportRow(taskName ?? unassigned(), detail + kindDetail, duration));
+        const row = reportRow(taskName ?? unassigned(), detail + kindDetail, duration);
+        if (!taskName && !taskId) {
+          const controls = element('span', 'history-controls');
+          controls.append(row.lastElementChild);
+          const assign = element('button', 'text-button assign-button', tr('补任务', 'Add task'));
+          assign.type = 'button';
+          assign.addEventListener('click', () => openAssignTask(record));
+          controls.append(assign);
+          row.append(controls);
+        }
+        entries.append(row);
       }
       list.append(entries);
       list.hidden = records.length === 0;
@@ -1611,15 +1893,66 @@
         }
       }
     });
-    byId('toggle-timer').addEventListener('click', toggleTimer);
+    const toggleButton = byId('toggle-timer');
+    toggleButton.style.setProperty('--hold-time', `${HOLD_TIME}ms`);
+    toggleButton.addEventListener('pointerdown', beginHold);
+    toggleButton.addEventListener('pointermove', (event) => {
+      if (hold?.id !== event.pointerId || Math.hypot(event.clientX - hold.x, event.clientY - hold.y) < 15) return;
+      suppressHoldClick = true;
+      cancelHold();
+    });
+    for (const eventName of ['pointerup', 'pointercancel', 'lostpointercapture']) {
+      toggleButton.addEventListener(eventName, (event) => {
+        if (hold?.id === event.pointerId) cancelHold();
+      });
+    }
+    toggleButton.addEventListener('contextmenu', (event) => event.preventDefault());
+    toggleButton.addEventListener('click', (event) => {
+      if (suppressHoldClick && event.detail) {
+        suppressHoldClick = false;
+        return;
+      }
+      toggleTimer();
+    });
     byId('timer-kind').addEventListener('click', () => {
       const nextKind = state.timer.kind === 'countdown' ? 'countup' : 'countdown';
       requestTimerChange('focus', false, nextKind);
     });
-    byId('finish-timer').addEventListener('click', () => {
-      if (!isCountUpFocus() || state.timer.status === 'idle') return;
-      completeTimer();
-      byId('toggle-timer').focus({ preventScroll: true });
+    byId('finish-timer').addEventListener('click', finishTimer);
+    byId('dismiss-break-alarm').addEventListener('click', dismissBreakAlarm);
+    byId('break-alarm').addEventListener('cancel', (event) => event.preventDefault());
+    byId('assign-recent').addEventListener('click', () => openAssignTask(recentUnassigned));
+    byId('assign-choice').addEventListener('change', updateAssignChoice);
+    byId('assign-name').addEventListener('input', () => byId('assign-name').setCustomValidity(''));
+    byId('assign-form').addEventListener('submit', (event) => {
+      event.preventDefault();
+      const record = state.records.find(({ id }) => id === assigningRecordId);
+      if (!record || record.taskId || record.taskName) {
+        byId('assign-dialog').close();
+        return;
+      }
+      const input = byId('assign-name');
+      const choice = byId('assign-choice').value;
+      let task = state.tasks.find(({ id }) => id === choice);
+      if (!task) {
+        const name = input.value.trim();
+        if (!name) {
+          input.setCustomValidity(tr('请输入任务名称。', 'Enter a task name.'));
+          input.reportValidity();
+          return;
+        }
+        task = { id: newId(), name, note: '' };
+        state.tasks.push(task);
+      }
+      record.taskId = task.id;
+      record.taskName = task.name;
+      saveState();
+      byId('assign-dialog').close();
+      if (reportTaskFilter === null) reportTaskFilter = undefined;
+      renderTasks();
+      renderTimer();
+      if (view === 'report') renderReport();
+      showToast(tr('已补记到这轮专注。', 'Task added to this session.'));
     });
     byId('reset-timer').addEventListener('click', () => requestTimerChange(state.timer.mode, true));
     byId('reset-cycle').addEventListener('click', () => {
@@ -1710,6 +2043,7 @@
         : tr('每完成 4 个番茄，下一阶段切换为长休息。时长修改从下一轮开始生效。', 'A long break follows every 4 sessions. Duration changes apply to the next session.');
       byId('sounds').checked = state.settings.sound;
       byId('button-sounds').checked = state.settings.buttonSound;
+      updateFloatingSetting();
       byId('language').value = tr('zh', 'en');
       byId('settings-dialog').showModal();
     });
@@ -1722,6 +2056,9 @@
       }
       state.settings.sound = byId('sounds').checked;
       state.settings.buttonSound = byId('button-sounds').checked;
+      if (nativeTimer && nativeTimer.floatingEnabled() !== byId('floating-timer').checked) {
+        nativeTimer.setFloating(byId('floating-timer').checked);
+      }
       state.settings.language = byId('language').value;
       if (state.settings.language !== tr('zh', 'en')) {
         applyLanguage();
@@ -1752,6 +2089,7 @@
     function refresh() {
       const now = new Date();
       settleTimer(now.getTime());
+      if (state.breakAlert || byId('break-alarm').open) syncBreakAlarm(now.getTime());
       if (state.timer.status === 'running') renderClock(now.getTime());
       if (displayedDay !== now.toDateString()) {
         renderToday(now);
@@ -1769,9 +2107,9 @@
       renderToday();
       if (view === 'report') renderReport();
     });
-    document.addEventListener('visibilitychange', () => { refresh(); syncDial(); });
+    document.addEventListener('visibilitychange', () => { if (document.hidden) cancelHold(); refresh(); syncDial(); });
     function restoreRunningAudio() {
-      if (state.settings.sound && state.timer.status === 'running' && audioContext?.state !== 'running') unlockAudio();
+      if (state.settings.sound && (state.timer.status === 'running' || state.breakAlert) && audioContext?.state !== 'running') unlockAudio();
     }
     const launch = byId('launch');
     launch.addEventListener('animationend', (event) => {
