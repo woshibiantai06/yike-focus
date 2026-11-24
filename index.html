@@ -510,18 +510,35 @@
     #break-alarm[open] { display: grid; align-content: center; justify-items: center; gap: 16px; }
     #break-alarm .primary { margin-top: 6px; color: var(--alarm-color); background: #fffaf8; min-width: 145px; border-radius: 999px; }
     #break-alarm .primary:focus-visible { outline-color: var(--alarm-ink); }
-    .alarm-art { width: min(198px, 54vw); color: var(--alarm-ink); overflow: visible; }
-    .alarm-clock { transform-box: fill-box; transform-origin: center 83%; }
-    .alarm-lines { opacity: 0; }
-    #break-alarm[data-ringing] .alarm-clock { animation: wobble-alarm 1.9s ease-in-out var(--ring-offset, 0ms) infinite; }
-    #break-alarm[data-ringing] .alarm-lines { animation: show-alarm-lines 1.9s ease-in-out var(--ring-offset, 0ms) infinite; }
-    @keyframes wobble-alarm {
-      0%, 44%, 100% { transform: rotate(0); }
-      6%, 21% { transform: rotate(-8deg); }
-      13%, 28% { transform: rotate(8deg); }
-      36% { transform: rotate(-3deg); }
+    .alarm-art { --alarm-beat: 1.9s; width: min(220px, 60vw); color: var(--alarm-ink); overflow: visible; }
+    .alarm-clock { transform-box: view-box; transform-origin: 50% 79%; }
+    .alarm-shadow { transform-box: fill-box; transform-origin: center; opacity: .22; }
+    .alarm-lines { transform-box: fill-box; transform-origin: center; opacity: 0; }
+    #break-alarm[data-ringing] .alarm-clock { animation: bounce-alarm var(--alarm-beat) ease-in-out var(--ring-offset, 0ms) infinite; }
+    #break-alarm[data-ringing] .alarm-shadow { animation: bounce-shadow var(--alarm-beat) ease-in-out var(--ring-offset, 0ms) infinite; }
+    #break-alarm[data-ringing] .alarm-lines { animation: show-alarm-lines var(--alarm-beat) ease-out var(--ring-offset, 0ms) infinite; }
+    @keyframes bounce-alarm {
+      0%, 47%, 100% { transform: perspective(320px) translateY(0) rotateX(0deg) rotateZ(0deg) scale(1); }
+      3% { transform: perspective(320px) translateY(3px) rotateX(0deg) rotateZ(-2deg) scale(1.07, .92); }
+      8% { transform: perspective(320px) translateY(-11px) rotateX(-15deg) rotateZ(-12deg) scale(1.10, 1.13); }
+      13% { transform: perspective(320px) translateY(-18px) rotateX(-20deg) rotateZ(11deg) scale(1.16, 1.12); }
+      18% { transform: perspective(320px) translateY(-14px) rotateX(-17deg) rotateZ(-11deg) scale(1.13, 1.11); }
+      23% { transform: perspective(320px) translateY(-9px) rotateX(-12deg) rotateZ(8deg) scale(1.11, 1.09); }
+      28% { transform: perspective(320px) translateY(-4px) rotateX(-6deg) rotateZ(-5deg) scale(1.06, 1.06); }
+      33% { transform: perspective(320px) translateY(1px) rotateX(0deg) rotateZ(3deg) scale(1.08, .94); }
+      39% { transform: perspective(320px) translateY(-4px) rotateX(-4deg) rotateZ(-2deg) scale(1.02, 1.04); }
     }
-    @keyframes show-alarm-lines { 0%, 40%, 100% { opacity: 0; } 9%, 28% { opacity: .85; } }
+    @keyframes bounce-shadow {
+      0%, 47%, 100% { opacity: .22; transform: scale(1); }
+      13% { opacity: .10; transform: scale(.76, .82); }
+      33% { opacity: .29; transform: scale(1.13, .91); }
+    }
+    @keyframes show-alarm-lines {
+      0%, 33%, 100% { opacity: 0; transform: scaleX(.91); }
+      7%, 20% { opacity: .88; transform: scaleX(1.06); }
+      13% { opacity: .58; transform: scaleX(1); }
+      28% { opacity: .42; transform: scaleX(1.12); }
+    }
     .toast {
       position: fixed; right: 24px; bottom: 22px; z-index: 2; width: max-content; max-width: calc(100% - 36px);
       background: color-mix(in srgb, var(--canvas), #291326 70%); border: 1px solid var(--outline); color: var(--ink);
@@ -631,7 +648,7 @@
       *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; }
       .launch { display: none; }
       .dial-scale, .dial-completion, .dial-completion-ring, .dial-completion-check, .dial-completion-mark,
-      #break-alarm[data-ringing] :is(.alarm-clock, .alarm-lines),
+      #break-alarm[data-ringing] :is(.alarm-clock, .alarm-shadow, .alarm-lines),
       .dial[data-complete="true"] :is(.dial-marks, .dial-cursor, .dial-inner) { animation: none; }
       #toggle-timer[data-holding] .hold-ring rect { animation: none; stroke-dashoffset: 0; opacity: .5; }
     }
@@ -822,17 +839,22 @@
     </form>
   </dialog>
   <dialog id="break-alarm" aria-labelledby="break-alarm-title">
-    <svg class="alarm-art" viewBox="0 0 200 178" fill="none" aria-hidden="true">
-      <g class="alarm-lines" stroke="currentColor" stroke-width="4" stroke-linecap="round">
-        <path d="M43 39 29 30 M38 52 20 51 M157 39 171 30 M162 52 180 51"/>
+    <svg class="alarm-art" viewBox="0 0 224 190" fill="none" aria-hidden="true">
+      <ellipse class="alarm-shadow" cx="112" cy="165" rx="58" ry="9" fill="#081725"/>
+      <g class="alarm-lines" stroke="currentColor" stroke-width="4.7" stroke-linecap="round">
+        <path d="M41 43q-5-6-13-8 M35 56q-7-4-15-3 M38 69q-6-1-11 1"/>
+        <path d="M183 43q5-6 13-8 M189 56q7-4 15-3 M186 69q6-1 11 1"/>
       </g>
       <g class="alarm-clock">
-        <path d="M63 128 53 150 M137 128 147 150 M100 40V27" stroke="currentColor" stroke-width="9" stroke-linecap="round"/>
-        <path d="M51 55 Q41 42 56 31 Q71 20 82 33 L51 55Z M149 55 Q159 42 144 31 Q129 20 118 33 L149 55Z" fill="currentColor"/>
-        <circle cx="100" cy="92" r="52" fill="currentColor" fill-opacity=".16" stroke="currentColor" stroke-width="6"/>
-        <circle cx="100" cy="92" r="41" stroke="currentColor" stroke-opacity=".22" stroke-width="1.5"/>
-        <path d="M100 67v25l17 10" stroke="currentColor" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
-        <circle cx="100" cy="92" r="3.5" fill="currentColor"/>
+        <path d="M71 139q-5 7-9 16 M153 139q5 7 9 16 M112 51V36" stroke="currentColor" stroke-width="12" stroke-linecap="round"/>
+        <path d="M50 60c-6-9 0-21 11-27 10-6 22-5 27 3 2 4 0 7-4 10L60 61c-4 3-8 3-10-1z" fill="currentColor"/>
+        <path d="M174 60c6-9 0-21-11-27-10-6-22-5-27 3-2 4 0 7 4 10l24 15c4 3 8 3 10-1z" fill="currentColor"/>
+        <rect x="49" y="57" width="126" height="100" rx="46" fill="#102138" fill-opacity=".23"/>
+        <rect x="49" y="51" width="126" height="100" rx="46" fill="currentColor"/>
+        <rect x="61" y="62" width="102" height="77" rx="36" fill="var(--alarm-color)"/>
+        <rect x="64" y="65" width="96" height="71" rx="33" fill="currentColor" fill-opacity=".10"/>
+        <path d="M112 72v4 M112 125v4 M74 100h4 M146 100h4" stroke="currentColor" stroke-opacity=".57" stroke-width="3.5" stroke-linecap="round"/>
+        <path d="M112 83v17l15 9" stroke="currentColor" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
       </g>
     </svg>
     <h2 id="break-alarm-title">休息结束</h2>
