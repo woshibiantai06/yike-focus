@@ -54,8 +54,10 @@ final class TimerAlerts {
 
     static void update(Context context, JSONObject state) {
         SharedPreferences saved = preferences(context);
-        if (state.optLong("controlCursor") < saved.getLong("control-seq", 0)) return;
-        saved.edit().remove("controls").apply();
+        long cursor = state.optLong("controlCursor");
+        long sequence = saved.getLong("control-seq", 0);
+        if (cursor < sequence && saved.contains("controls")) return;
+        if (cursor != sequence) saved.edit().putLong("control-seq", cursor).apply();
         showTimer(context, state);
     }
 
@@ -220,6 +222,8 @@ final class TimerAlerts {
             long seq = saved.getLong("control-seq", 0) + 1;
             JSONArray controls = new JSONArray(saved.getString("controls", "[]"));
             controls.put(new JSONObject().put("seq", seq).put("id", id).put("at", now).put("pause", pause));
+            long acknowledged = state.optLong("controlCursor");
+            while (controls.length() > 64 && controls.getJSONObject(0).optLong("seq") <= acknowledged) controls.remove(0);
             if (pause && countdown) state.put("remaining", endAt - now).put("endAt", 0).put("when", 0);
             if (pause && !countdown) state.put("elapsed", Math.max(0, now - state.optLong("when"))).put("resumedAt", 0);
             if (!pause && countdown) state.put("endAt", now + state.optLong("remaining")).put("when", state.optLong("endAt"));

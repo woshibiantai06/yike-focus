@@ -100,8 +100,9 @@ public final class MainActivity extends Activity {
         }
 
         @JavascriptInterface
-        public String timerControls() {
-            return TimerAlerts.preferences(MainActivity.this).getString("controls", "");
+        public String timerControls(long after) {
+            android.content.SharedPreferences saved = TimerAlerts.preferences(MainActivity.this);
+            return saved.getLong("control-seq", 0) > after ? saved.getString("controls", "") : "";
         }
 
         @JavascriptInterface

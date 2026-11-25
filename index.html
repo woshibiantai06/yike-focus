@@ -1238,7 +1238,7 @@
 
     function syncNativeControls() {
       if (!nativeTimer?.timerControls) return;
-      const pending = nativeTimer.timerControls();
+      const pending = nativeTimer.timerControls(state.nativeControlCursor ?? 0);
       if (!pending) return;
       let changed = false;
       for (const command of JSON.parse(pending)) {
