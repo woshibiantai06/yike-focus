@@ -86,7 +86,22 @@ public final class MainActivity extends Activity {
 
         @JavascriptInterface
         public void ringBreak(String id, long until, boolean sound, boolean english) {
-            runOnUiThread(() -> TimerAlerts.ring(MainActivity.this, id, until, sound, english));
+            runOnUiThread(() -> TimerAlerts.ring(MainActivity.this, id, until, sound, english, false));
+        }
+
+        @JavascriptInterface
+        public void ringFocus(String id, long until, boolean sound, boolean english) {
+            runOnUiThread(() -> TimerAlerts.ring(MainActivity.this, id, until, sound, english, true));
+        }
+
+        @JavascriptInterface
+        public void chimeFocus(String id, long dueAt) {
+            runOnUiThread(() -> TimerAlerts.chime(MainActivity.this, id, dueAt));
+        }
+
+        @JavascriptInterface
+        public String timerControls() {
+            return TimerAlerts.preferences(MainActivity.this).getString("controls", "");
         }
 
         @JavascriptInterface

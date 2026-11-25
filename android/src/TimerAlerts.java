@@ -8,12 +8,18 @@ import android.app.PendingIntent;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.media.AudioAttributes;
+import android.media.MediaPlayer;
+import java.util.Locale;
+import org.json.JSONArray;
+import org.json.JSONException;
 import org.json.JSONObject;
 
 final class TimerAlerts {
     static final int ALARM_NOTIFICATION = 102;
     static final String TIMER_DUE = "app.yike.focus.TIMER_DUE";
     static final String DISMISS = "app.yike.focus.DISMISS_BREAK";
+    static final String CONTROL = "app.yike.focus.CONTROL_TIMER";
     private static final int TIMER_NOTIFICATION = 101;
     private static final String TIMER_CHANNEL = "timer";
     private static final String ALARM_CHANNEL = "break-alarm";
@@ -47,6 +53,26 @@ final class TimerAlerts {
     }
 
     static void update(Context context, JSONObject state) {
+        SharedPreferences saved = preferences(context);
+        if (state.optLong("controlCursor") < saved.getLong("control-seq", 0)) return;
+        saved.edit().remove("controls").apply();
+        showTimer(context, state);
+    }
+
+    private static JSONObject readTimer(Context context) {
+        if (latestTimer != null) return latestTimer;
+        try { return new JSONObject(preferences(context).getString("timer-state", "{}")); }
+        catch (JSONException ignored) { return new JSONObject(); }
+    }
+
+    private static String clockText(long millis, boolean countingDown) {
+        long seconds = (Math.max(0, millis) + (countingDown ? 999 : 0)) / 1000;
+        return seconds >= 3600
+            ? String.format(Locale.ROOT, "%d:%02d:%02d", seconds / 3600, seconds / 60 % 60, seconds % 60)
+            : String.format(Locale.ROOT, "%02d:%02d", seconds / 60, seconds % 60);
+    }
+
+    private static void showTimer(Context context, JSONObject state) {
         latestTimer = state;
         String status = state.optString("status");
         String id = state.optString("id", "");
@@ -57,6 +83,7 @@ final class TimerAlerts {
         boolean english = state.optBoolean("english");
         boolean finished = running && countdown && endAt <= System.currentTimeMillis();
         if (!active || id.isEmpty() || finished) {
+            preferences(context).edit().putString("timer-state", state.toString()).apply();
             FloatingTimer.hide(context);
             cancelScheduled(context);
             notifications(context).cancel(TIMER_NOTIFICATION);
@@ -64,11 +91,21 @@ final class TimerAlerts {
         }
 
         createChannels(context, english);
+        long pausedTime = state.optLong(countdown ? "remaining" : "elapsed");
+        String detail = running ? (english ? "Tap to open Yike" : "点击打开一刻")
+            : (english ? "Paused · " : "已暂停 · ") + clockText(pausedTime, countdown);
+        try { state.put("detail", detail); } catch (JSONException ignored) {}
+        preferences(context).edit().putString("timer-state", state.toString()).apply();
+        Intent control = new Intent(context, TimerReceiver.class).setAction(CONTROL)
+            .putExtra("id", id).putExtra("pause", running).putExtra("when", state.optLong("when"));
         Notification.Builder notification = new Notification.Builder(context, TIMER_CHANNEL)
             .setSmallIcon(R.drawable.ic_timer_status)
             .setContentTitle(state.optString("title"))
-            .setContentText(state.optString("detail"))
+            .setContentText(detail)
             .setContentIntent(openApp(context))
+            .addAction(new Notification.Action.Builder(null,
+                running ? (english ? "Pause" : "暂停") : (english ? "Resume" : "继续"),
+                PendingIntent.getBroadcast(context, running ? 4 : 5, control, FLAGS)).build())
             .setCategory(Notification.CATEGORY_STOPWATCH)
             .setVisibility(Notification.VISIBILITY_PUBLIC)
             .setOngoing(true)
@@ -80,12 +117,13 @@ final class TimerAlerts {
         }
         notifications(context).notify(TIMER_NOTIFICATION, notification.build());
         updateFloating(context);
-        if (running && countdown) schedule(context, state, id, endAt);
+        if (running && countdown) schedule(context, id, endAt);
         else cancelScheduled(context);
     }
 
     static void setAppVisible(Context context, boolean visible) {
         appVisible = visible;
+        if (latestTimer == null) latestTimer = readTimer(context);
         updateFloating(context);
     }
 
@@ -94,21 +132,16 @@ final class TimerAlerts {
         else FloatingTimer.update(context, latestTimer, openApp(context));
     }
 
-    private static void schedule(Context context, JSONObject state, String id, long endAt) {
+    private static void schedule(Context context, String id, long endAt) {
         SharedPreferences saved = preferences(context);
-        boolean sound = state.optBoolean("sound", true);
-        boolean english = state.optBoolean("english");
         Intent due = new Intent(context, TimerReceiver.class).setAction(TIMER_DUE);
         if (id.equals(saved.getString("scheduled-id", "")) && endAt == saved.getLong("scheduled-end", 0)
-            && sound == saved.getBoolean("scheduled-sound", true) && english == saved.getBoolean("scheduled-en", false)
             && PendingIntent.getBroadcast(context, 2, due, PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_NO_CREATE) != null) return;
 
-        due.putExtra("id", id).putExtra("end", endAt).putExtra("rest", state.optBoolean("rest"))
-            .putExtra("sound", sound).putExtra("english", english);
+        due.putExtra("id", id).putExtra("end", endAt);
         PendingIntent operation = PendingIntent.getBroadcast(context, 2, due, FLAGS);
         AlarmManager alarm = context.getSystemService(AlarmManager.class);
-        saved.edit().putString("scheduled-id", id).putLong("scheduled-end", endAt)
-            .putBoolean("scheduled-sound", sound).putBoolean("scheduled-en", english).apply();
+        saved.edit().putString("scheduled-id", id).putLong("scheduled-end", endAt).apply();
         try {
             alarm.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, endAt, operation);
         } catch (SecurityException unavailable) {
@@ -131,14 +164,86 @@ final class TimerAlerts {
         long endAt = intent.getLongExtra("end", 0);
         if (id == null || !id.equals(saved.getString("scheduled-id", "")) || endAt != saved.getLong("scheduled-end", 0)) return;
         saved.edit().remove("scheduled-id").apply();
-        notifications(context).cancel(TIMER_NOTIFICATION);
-        FloatingTimer.hide(context);
-        if (intent.getBooleanExtra("rest", false)) {
-            ring(context, id, endAt + 180_000L, intent.getBooleanExtra("sound", true), intent.getBooleanExtra("english", false));
+        if (endAt > System.currentTimeMillis()) {
+            schedule(context, id, endAt);
+            return;
         }
+        handleDeadline(context, readTimer(context), id, endAt);
     }
 
-    static void ring(Context context, String id, long until, boolean sound, boolean english) {
+    private static void handleDeadline(Context context, JSONObject state, String id, long endAt) {
+        if (!id.equals(state.optString("id")) || !"running".equals(state.optString("status")) || endAt != state.optLong("endAt")) return;
+        boolean rest = state.optBoolean("rest");
+        boolean sound = state.optBoolean("sound", true);
+        try {
+            if (rest || "alarm".equals(state.optString("focusAlert"))) {
+                state.put("status", "waiting");
+                showTimer(context, state);
+                ring(context, id, endAt + 180_000L, sound, state.optBoolean("english"), !rest);
+            } else {
+                if (sound) chime(context, id, endAt);
+                if ("rest".equals(state.optString("focusAfter"))) {
+                    long duration = state.optLong("nextBreakDuration", 300_000);
+                    long breakEnd = endAt + duration;
+                    String breakId = id + "-break";
+                    state.put("id", breakId).put("rest", true).put("duration", duration).put("remaining", duration)
+                        .put("endAt", breakEnd).put("when", breakEnd).put("title", state.optString("nextBreakTitle"));
+                    showTimer(context, state);
+                    if (breakEnd <= System.currentTimeMillis()) handleDeadline(context, state, breakId, breakEnd);
+                } else {
+                    long duration = state.optLong("duration");
+                    state.put("countdown", false).put("endAt", 0).put("when", endAt - duration)
+                        .put("elapsed", duration).put("resumedAt", endAt);
+                    showTimer(context, state);
+                }
+            }
+        } catch (JSONException ignored) {}
+    }
+
+    static void control(Context context, Intent intent) {
+        JSONObject state = readTimer(context);
+        SharedPreferences saved = preferences(context);
+        String id = intent.getStringExtra("id");
+        boolean pause = intent.getBooleanExtra("pause", false);
+        String expected = pause ? "running" : "paused";
+        if (id == null || !id.equals(state.optString("id")) || !expected.equals(state.optString("status"))
+            || intent.getLongExtra("when", -1) != state.optLong("when")) return;
+
+        long now = System.currentTimeMillis();
+        long endAt = state.optLong("endAt");
+        boolean countdown = state.optBoolean("countdown");
+        if (pause && countdown && endAt <= now) {
+            handleDeadline(context, state, id, endAt);
+            return;
+        }
+        try {
+            long seq = saved.getLong("control-seq", 0) + 1;
+            JSONArray controls = new JSONArray(saved.getString("controls", "[]"));
+            controls.put(new JSONObject().put("seq", seq).put("id", id).put("at", now).put("pause", pause));
+            if (pause && countdown) state.put("remaining", endAt - now).put("endAt", 0).put("when", 0);
+            if (pause && !countdown) state.put("elapsed", Math.max(0, now - state.optLong("when"))).put("resumedAt", 0);
+            if (!pause && countdown) state.put("endAt", now + state.optLong("remaining")).put("when", state.optLong("endAt"));
+            if (!pause && !countdown) state.put("resumedAt", now).put("when", now - state.optLong("elapsed"));
+            state.put("status", pause ? "paused" : "running");
+            saved.edit().putLong("control-seq", seq).putString("controls", controls.toString()).apply();
+            showTimer(context, state);
+        } catch (JSONException ignored) {}
+    }
+
+    static void chime(Context context, String id, long dueAt) {
+        SharedPreferences saved = preferences(context);
+        if (id == null || id.isEmpty() || id.equals(saved.getString("last-chime", "")) || System.currentTimeMillis() - dueAt > 3000) return;
+        saved.edit().putString("last-chime", id).apply();
+        AudioAttributes attributes = new AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_NOTIFICATION)
+            .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION).build();
+        MediaPlayer player = MediaPlayer.create(context, R.raw.focus_chime, attributes, 0);
+        if (player == null) return;
+        player.setOnCompletionListener(MediaPlayer::release);
+        player.setOnErrorListener((error, what, extra) -> { error.release(); return true; });
+        try { player.start(); } catch (IllegalStateException unavailable) { player.release(); }
+    }
+
+    static void ring(Context context, String id, long until, boolean sound, boolean english, boolean focus) {
         if (id == null || id.isEmpty() || until <= System.currentTimeMillis()) return;
         SharedPreferences saved = preferences(context);
         if (id.equals(saved.getString("last-alarm", "")) || id.equals(saved.getString("dismissed", ""))) return;
@@ -146,22 +251,22 @@ final class TimerAlerts {
         createChannels(context, english);
         notifications(context).cancel(TIMER_NOTIFICATION);
         Intent start = new Intent(context, BreakAlarmService.class).putExtra("id", id)
-            .putExtra("until", until).putExtra("sound", sound).putExtra("english", english);
+            .putExtra("until", until).putExtra("sound", sound).putExtra("english", english).putExtra("focus", focus);
         try {
             context.startForegroundService(start);
         } catch (IllegalStateException | SecurityException unavailable) {
-            notifications(context).notify(ALARM_NOTIFICATION, alarmNotification(context, id, english));
+            notifications(context).notify(ALARM_NOTIFICATION, alarmNotification(context, id, english, focus));
         }
     }
 
-    static Notification alarmNotification(Context context, String id, boolean english) {
+    static Notification alarmNotification(Context context, String id, boolean english, boolean focus) {
         Intent dismiss = new Intent(context, TimerReceiver.class).setAction(DISMISS).putExtra("id", id);
         return new Notification.Builder(context, ALARM_CHANNEL)
             .setSmallIcon(R.drawable.ic_timer_status)
-            .setContentTitle(english ? "Break over" : "休息结束")
-            .setContentText(english ? "Tap to see the alarm" : "点击查看闹钟")
+            .setContentTitle(focus ? (english ? "Focus goal reached" : "专注时间到") : (english ? "Break over" : "休息结束"))
+            .setContentText(focus ? (english ? "Open Yike to choose what’s next" : "打开一刻选择下一步") : (english ? "Tap to see the alarm" : "点击查看闹钟"))
             .setContentIntent(openApp(context))
-            .addAction(new Notification.Action.Builder(null, english ? "Dismiss" : "关闭闹钟",
+            .addAction(new Notification.Action.Builder(null, focus ? (english ? "Silence" : "停止铃声") : (english ? "Dismiss" : "关闭闹钟"),
                 PendingIntent.getBroadcast(context, 3, dismiss, FLAGS)).build())
             .setCategory(Notification.CATEGORY_ALARM)
             .setVisibility(Notification.VISIBILITY_PUBLIC)

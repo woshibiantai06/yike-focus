@@ -62,7 +62,7 @@ Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'res/values/app.xml') -Destinati
 $drawable = New-Item -ItemType Directory -Force -Path (Join-Path $resources 'drawable')
 Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'res/drawable/ic_timer_status.xml') -Destination $drawable.FullName
 $raw = New-Item -ItemType Directory -Force -Path (Join-Path $resources 'raw')
-Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'res/raw/break_bell.wav') -Destination $raw.FullName
+Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'res/raw/break_bell.wav'), (Join-Path $PSScriptRoot 'res/raw/focus_chime.wav') -Destination $raw.FullName
 $manifest = Join-Path $PSScriptRoot 'AndroidManifest.xml'
 if ($PublicBeta) {
     [xml]$manifestXml = Get-Content -LiteralPath $manifest -Raw

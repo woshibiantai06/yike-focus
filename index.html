@@ -446,10 +446,18 @@
       margin-top: 17px; border: 1px solid var(--outline); border-radius: 17px; padding: 11px 13px;
       background: var(--softer); color: var(--muted); font-size: 12px; text-align: left;
     }
-    .session-task { display: flex; align-items: center; gap: 11px; min-width: 0; }
+    .session-task { display: flex; align-items: center; gap: 8px; min-width: 0; padding: 6px 9px; border: 1px solid var(--outline); border-radius: 13px; background: var(--softer); color: var(--muted); text-align: start; transition: background .22s; }
+    .session-task:hover { background: var(--soft); }
     .session-task-copy { display: grid; gap: 2px; min-width: 0; }
     .session-task strong { color: var(--ink); overflow-wrap: anywhere; font-size: clamp(16px, 3.3vw, 21px); line-height: 1.25; }
     .session-task .ico { margin-inline: 4px; }
+    .session-task .arrow { flex-shrink: 0; }
+    .session-receipt { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin: 0 0 10px; padding: 6px 10px; background: var(--softer); border: 1px solid var(--outline); border-radius: 14px; font-size: 12px; }
+    .receipt-copy { color: var(--muted); min-width: 0; overflow-wrap: anywhere; }
+    .receipt-copy strong { color: var(--ink); }
+    .receipt-action { flex-shrink: 0; }
+    #timer-view:has(#timer-actions[data-state="running"]) .overview { opacity: .8; }
+    #timer-view .overview { transition: opacity .28s var(--ease); }
     .task-footer-actions { display: grid; justify-items: end; gap: 5px; flex: 0 0 auto; }
     .assign-button { min-height: 34px; padding-inline: 9px; border-radius: 999px; white-space: nowrap; }
     .data-list .history-controls { display: flex; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: 6px; }
@@ -521,6 +529,12 @@
     .ring-callout strong, .ring-callout span { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .ring-callout strong { font-size: 13px; line-height: 1.3; }
     .ring-callout span { color: var(--muted); font-size: 11px; line-height: 1.35; }
+    .ring-callout button { display: block; width: 100%; min-width: 0; border-radius: 6px; padding: 0; background: none; border: none; text-align: inherit; }
+    .ring-callout button:hover strong, .ring-callout button[aria-pressed="true"] strong { color: var(--accent); }
+    .ring-slice { cursor: pointer; }
+    .ring-slice, .ring-callout, .ring-leader path, .ring-leader circle { transition: opacity .24s var(--ease); }
+    .ring-layout[data-filtered] :is(.ring-slice, .ring-callout, .ring-leader)[data-selected="false"] { opacity: .35; }
+    .ring-layout[data-filtered] .ring-callout[data-selected="false"] { opacity: .65; }
     @container (min-width: 520px) {
       .ring-layout { --ring-size: 232px; padding-block: 0; }
       .ring-face { width: var(--ring-size); }
@@ -625,9 +639,22 @@
       color: #fffaf8; box-shadow: none; padding: 24px; text-align: center;
     }
     #break-alarm[data-mode="long"] { --alarm-color: #286349; --alarm-light: #3d795a; --alarm-ink: #e8faec; }
+    #break-alarm[data-mode="focus"] { --alarm-color: #a33948; --alarm-light: #be5966; --alarm-ink: #fff0e9; }
     #break-alarm[open] { display: grid; align-content: center; justify-items: center; gap: 16px; }
     #break-alarm .primary { margin-top: 6px; color: var(--alarm-color); background: #fffaf8; min-width: 145px; border-radius: 999px; }
     #break-alarm .primary:focus-visible { outline-color: var(--alarm-ink); }
+    .focus-alarm-actions { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 8px; }
+    #break-alarm .focus-alarm-actions .primary { margin: 0; }
+    .focus-alarm-actions .soft-button { color: var(--alarm-ink); background: #ffffff20; border-color: #ffffff55; }
+    .finish-settings { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 155px), 1fr)); gap: 10px; margin-top: 14px; }
+    .picker-list { display: grid; gap: 5px; max-height: min(50dvh, 350px); overflow-y: auto; padding: 3px; }
+    .picker-list button { padding: 9px 12px; text-align: start; overflow-wrap: anywhere; }
+    .picker-list button[aria-pressed="true"] { border-color: var(--accent); }
+    @media (max-width: 650px) {
+      #task-picker { width: min(100%, 480px); max-height: 84dvh; margin: auto auto 0; border-radius: 24px 24px 0 0; padding-bottom: max(16px, env(safe-area-inset-bottom)); }
+      #task-picker[open] { animation: open-task-sheet .3s var(--ease) both; }
+      @keyframes open-task-sheet { from { transform: translateY(32px); opacity: .35; } }
+    }
     .alarm-art { --alarm-beat: 1.9s; width: min(220px, 60vw); color: var(--alarm-ink); overflow: visible; }
     .alarm-clock { transform-box: view-box; transform-origin: 50% 79%; }
     .alarm-shadow { transform-box: fill-box; transform-origin: center; opacity: .22; }
@@ -865,9 +892,14 @@
             <button type="button" class="icon-button" id="reset-timer" aria-label="重置计时" title="重置计时" disabled><i class="ico reset" aria-hidden="true"></i></button>
           </div>
           <p class="hold-hint" id="hold-hint"></p>
+          <div class="session-receipt" id="session-receipt" hidden>
+            <span class="receipt-copy" id="receipt-copy" role="status"></span>
+            <button class="text-button receipt-action" id="edit-recent" type="button" hidden>修改任务</button>
+            <button class="text-button receipt-action assign-button" id="assign-recent" type="button" hidden>补任务</button>
+          </div>
           <div class="timer-footer">
-            <div class="session-task" id="next-task"><i class="ico tasks-icon" aria-hidden="true"></i><div class="session-task-copy"><span id="session-task-label">当前任务</span><strong id="session-task">自由专注</strong></div></div>
-            <div class="task-footer-actions"><span id="mode-duration">25 分钟</span><button class="text-button assign-button" id="assign-recent" type="button" hidden>补任务</button></div>
+            <button class="session-task" id="next-task" type="button" aria-haspopup="dialog"><i class="ico tasks-icon" aria-hidden="true"></i><span class="session-task-copy"><span id="session-task-label">当前任务</span><strong id="session-task">自由专注</strong></span><i class="ico arrow" aria-hidden="true"></i></button>
+            <div class="task-footer-actions"><span id="mode-duration">25 分钟</span></div>
           </div>
         </div>
         <div class="overview" id="timer-overview">
@@ -950,6 +982,11 @@
     <p class="report-subtitle" id="delete-task-detail"></p>
     <div class="dialog-actions"><button type="button" class="soft-button" data-close autofocus>取消</button><button type="button" class="primary delete-confirm" id="confirm-delete-task">删除任务</button></div>
   </dialog>
+  <dialog id="task-picker" aria-labelledby="task-picker-title">
+    <div class="dialog-header"><h2 id="task-picker-title">选择本轮任务</h2><button type="button" class="icon-button small" data-close aria-label="关闭"><i class="ico close" aria-hidden="true"></i></button></div>
+    <div id="task-picker-list" class="picker-list"></div>
+    <div class="dialog-actions"><button type="button" class="soft-button" id="picker-add-task">新建任务</button></div>
+  </dialog>
   <dialog id="settings-dialog" aria-labelledby="settings-title">
     <form id="settings-form">
       <div class="dialog-header"><h2 id="settings-title">计时设置</h2><button type="button" class="icon-button small" data-close aria-label="关闭"><i class="ico close" aria-hidden="true"></i></button></div>
@@ -959,6 +996,10 @@
         <label class="field">短休息 <input type="number" id="short-minutes" min="1" max="60" step="1" required></label>
         <label class="field">长休息 <input type="number" id="long-minutes" min="1" max="60" step="1" required></label>
         <label class="field" hidden>休息 <input type="number" id="rest-minutes" min="1" max="60" step="1" required disabled></label>
+      </div>
+      <div class="finish-settings" id="finish-settings">
+        <label class="field">专注倒计时结束提示<select id="focus-alert"><option value="chime">轻轻叮一声</option><option value="alarm">持续响铃并震动</option></select></label>
+        <label class="field" id="focus-after-field">轻提示之后<select id="focus-after"><option value="continue">接着正向计时</option><option value="rest">自动开始休息</option></select></label>
       </div>
       <label class="check-field"><input type="checkbox" id="sounds">计时开始、暂停和完成音</label>
       <label class="check-field"><input type="checkbox" id="button-sounds">按钮轻触音</label>
@@ -1004,8 +1045,12 @@
       </g>
     </svg>
     <h2 id="break-alarm-title">休息结束</h2>
-    <p>准备好就开始下一轮专注。</p>
+    <p id="break-alarm-detail">准备好就开始下一轮专注。</p>
     <button type="button" class="primary" id="dismiss-break-alarm">关闭闹钟</button>
+    <div class="focus-alarm-actions" id="focus-alarm-actions" hidden>
+      <button type="button" class="soft-button" id="focus-alarm-continue">继续专注</button>
+      <button type="button" class="primary" id="focus-alarm-rest">开始休息</button>
+    </div>
   </dialog>
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
   <script>
@@ -1019,7 +1064,7 @@
     const HOLD_TIME = 800;
     const BREAK_RING_TIME = 3 * MINUTE;
     const nativeTimer = window.YikeAndroid;
-    const defaultSettings = { focus: 25, short: 5, long: 15, rest: 10, sound: true, buttonSound: true };
+    const defaultSettings = { focus: 25, short: 5, long: 15, rest: 10, sound: true, buttonSound: true, focusAlert: 'chime', focusAfter: 'continue' };
     const englishMarkup = {
       '点击数字改时长': 'Tap the time to edit',
       '调整时长': 'Edit duration', '总时长（分钟）': 'Total duration in minutes', '应用': 'Apply',
@@ -1041,6 +1086,9 @@
       '专注记录': 'Session history', '查看全部': 'Show all',
       '按结束时间归档。提前结束的专注按实际时长计入报告。': 'Reports use the finish time and include time spent on sessions ended early.',
       '补任务': 'Add task', '补记任务': 'Add a task to this session', '关联任务': 'Task', '新任务名称': 'New task name',
+      '修改任务': 'Change task', '选择本轮任务': 'Choose a task', '专注倒计时结束提示': 'Focus countdown alert',
+      '轻轻叮一声': 'Soft chime', '持续响铃并震动': 'Ring and vibrate', '轻提示之后': 'After the chime',
+      '接着正向计时': 'Keep timing', '自动开始休息': 'Start break automatically', '继续专注': 'Keep focusing', '开始休息': 'Start break',
       '休息结束': 'Break over', '准备好就开始下一轮专注。': 'Start your next focus session when you’re ready.',
       '关闭闹钟': 'Dismiss alarm',
       '关闭': 'Close', '任务名称': 'Task name', '备注': 'Note', '选填，最多 240 字': 'Optional, up to 240 characters',
@@ -1172,17 +1220,43 @@
 
     function syncNativeTimer() {
       if (!nativeTimer) return;
-      const { status, mode, id, resumedAt, elapsed, endAt } = state.timer;
+      const { status, mode, id, resumedAt, elapsed, endAt, duration, remaining } = state.timer;
       const countingUp = isCountUpFocus();
       const rest = mode !== 'focus';
+      const taskName = rest ? null : selectedTask()?.name;
+      const nextBreak = nextCountdownBreak();
       nativeTimer.updateTimer(JSON.stringify({
-        id, status, rest, endAt, english, sound: state.settings.sound, countdown: !countingUp,
+        id, status: state.breakAlert?.mode === 'focus' ? 'waiting' : status,
+        rest, endAt, english, duration, remaining, elapsed, resumedAt, sound: state.settings.sound, countdown: !countingUp,
+        focusAlert: state.settings.focusAlert, focusAfter: state.settings.focusAfter,
+        nextBreakDuration: state.settings[nextBreak] * MINUTE, nextBreakTitle: modeNames[nextBreak],
+        controlCursor: state.nativeControlCursor ?? 0,
         when: countingUp ? resumedAt - elapsed : endAt,
-        title: modeNames[mode],
-        detail: status === 'paused'
-          ? tr(`已暂停 · ${timerText()}`, `Paused · ${timerText()}`)
-          : tr('点击打开一刻', 'Tap to open Yike')
+        title: taskName ? `${modeNames[mode]} · ${taskName}` : modeNames[mode]
       }));
+    }
+
+    function syncNativeControls() {
+      if (!nativeTimer?.timerControls) return;
+      const pending = nativeTimer.timerControls();
+      if (!pending) return;
+      let changed = false;
+      for (const command of JSON.parse(pending)) {
+        if (command.seq <= (state.nativeControlCursor ?? 0)) continue;
+        settleTimer(command.at);
+        settleTimer(command.at);
+        const timer = state.timer;
+        if (timer.id === command.id && state.breakAlert?.mode !== 'focus') {
+          if (command.pause && timer.status === 'running') pauseTimer(command.at);
+          if (!command.pause && timer.status === 'paused') resumeTimer(timer, command.at);
+        }
+        state.nativeControlCursor = command.seq;
+        changed = true;
+      }
+      if (changed) {
+        saveState();
+        renderTimer();
+      }
     }
 
     function updateFloatingSetting() {
@@ -1333,7 +1407,7 @@
     }
 
     function isCountUpFocus(timer = state.timer) {
-      return timer.kind === 'countup' && timer.mode === 'focus';
+      return timer.mode === 'focus' && (timer.kind === 'countup' || timer.overtime === true);
     }
 
     function elapsedTime(now = Date.now()) {
@@ -1410,7 +1484,10 @@
       const phaseLabel = byId('phase-label');
       phaseLabel.textContent = mode === 'focus' ? focusName ?? tr('自由专注', 'Free focus') : tr(`${modeNames[mode]}时间`, modeNames[mode]);
       phaseLabel.title = mode === 'focus' ? focusName ?? '' : '';
-      byId('time-status').textContent = { idle: tr('准备就绪', 'Ready'), running: tr('计时中', 'Running'), paused: tr('已暂停', 'Paused') }[status];
+      byId('time-status').textContent = {
+        idle: tr('准备就绪', 'Ready'), running: state.timer.overtime ? tr('已到点 · 继续计时', 'Goal reached · Timing on') : tr('计时中', 'Running'),
+        paused: tr('已暂停', 'Paused')
+      }[status];
       const editTime = byId('edit-time');
       editTime.disabled = countingUp;
       if (countingUp) editTime.removeAttribute('title');
@@ -1435,7 +1512,13 @@
       byId('session-task').textContent = focusName ?? tr('自由专注', 'Free focus');
       const lastRecord = state.records.at(-1);
       recentUnassigned = lastRecord && !lastRecord.taskId && !lastRecord.taskName ? lastRecord : null;
-      byId('assign-recent').hidden = !recentUnassigned;
+      const receipt = lastRecord?.id && lastRecord.id === state.receiptId ? lastRecord : status === 'idle' ? recentUnassigned : null;
+      const receiptLabel = byId('receipt-copy');
+      const receiptText = receipt ? `${receipt.taskName ?? unassigned()} · ${durationText(receipt.duration)} · ${tr('已记录', 'Logged')}` : '';
+      if (receiptLabel.textContent !== receiptText) receiptLabel.textContent = receiptText;
+      byId('session-receipt').hidden = !receipt;
+      byId('edit-recent').hidden = !receipt?.taskName && !receipt?.taskId;
+      byId('assign-recent').hidden = !receipt || !recentUnassigned || receipt.id !== recentUnassigned.id;
       byId('cycle-card').hidden = countup;
       byId('timer-overview').dataset.single = countup;
       renderGroup();
@@ -1533,7 +1616,9 @@
     function syncBreakAlarm(now = Date.now()) {
       const dialog = byId('break-alarm');
       const alert = state.breakAlert;
-      if (alert && nativeTimer?.dismissedAlarm() === alert.id) {
+      const focus = alert?.mode === 'focus';
+      const silenced = alert && nativeTimer?.dismissedAlarm() === alert.id;
+      if (silenced && !focus) {
         delete state.breakAlert;
         saveState();
       }
@@ -1544,12 +1629,19 @@
         return;
       }
       dialog.dataset.mode = alert.mode;
+      byId('break-alarm-title').textContent = focus ? tr('专注时间到', 'Focus goal reached') : tr('休息结束', 'Break over');
+      byId('break-alarm-detail').textContent = focus
+        ? tr('继续会从原定时长往上计。', 'Keep focusing to count up from the planned duration.')
+        : tr('准备好就开始下一轮专注。', 'Start your next focus session when you’re ready.');
+      byId('dismiss-break-alarm').hidden = focus;
+      byId('focus-alarm-actions').hidden = !focus;
+      if (focus) byId('focus-alarm-rest').textContent = tr(`开始${modeNames[nextCountdownBreak()]}`, `Start ${modeNames[nextCountdownBreak()].toLowerCase()}`);
       const elapsed = Math.max(0, now - (alert.ringUntil - BREAK_RING_TIME));
       if (!dialog.open) {
         dialog.style.setProperty('--ring-offset', `${-(elapsed % 1900)}ms`);
         dialog.showModal();
       }
-      const ringing = now < alert.ringUntil;
+      const ringing = !silenced && now < alert.ringUntil;
       dialog.toggleAttribute('data-ringing', ringing);
       const beat = Math.floor(elapsed / 1900);
       if (nativeTimer || !ringing || beat === lastRingBeat) return;
@@ -1574,7 +1666,68 @@
       syncBreakAlarm();
     }
 
-    function completeTimer(now = Date.now(), early = false) {
+    function nextCountdownBreak() {
+      return state.cycle + 1 === CYCLE_SIZE ? 'long' : 'short';
+    }
+
+    function playFocusChime(id, dueAt) {
+      if (!state.settings.sound) return;
+      if (nativeTimer?.chimeFocus) {
+        nativeTimer.chimeFocus(id, dueAt);
+      } else if (audioContext?.state === 'running' && Date.now() - dueAt < 3000) {
+        const tone = audioContext.createOscillator();
+        const gain = audioContext.createGain();
+        const start = audioContext.currentTime;
+        tone.frequency.value = 880;
+        gain.gain.setValueAtTime(.0001, start);
+        gain.gain.exponentialRampToValueAtTime(.17, start + .014);
+        gain.gain.exponentialRampToValueAtTime(.0001, start + .34);
+        tone.connect(gain).connect(audioContext.destination);
+        tone.start(start);
+        tone.stop(start + .35);
+        tone.onended = () => gain.disconnect();
+      }
+    }
+
+    function continueAfterCountdown(resumedAt) {
+      const timer = state.timer;
+      Object.assign(timer, { overtime: true, status: 'running', elapsed: timer.duration, resumedAt, endAt: null });
+      saveState();
+      renderTimer();
+    }
+
+    function focusDeadline(now) {
+      const timer = state.timer;
+      if (state.settings.focusAlert === 'alarm') {
+        timer.status = 'paused';
+        timer.remaining = 0;
+        state.breakAlert = { id: timer.id, mode: 'focus', ringUntil: timer.endAt + BREAK_RING_TIME };
+        lastRingBeat = -1;
+        nativeTimer?.ringFocus?.(timer.id, state.breakAlert.ringUntil, state.settings.sound, english);
+        for (const dialog of document.querySelectorAll('dialog[open]')) dialog.close();
+        saveState();
+        renderTimer();
+        syncBreakAlarm(now);
+        return;
+      }
+      playFocusChime(timer.id, timer.endAt);
+      if (state.settings.focusAfter === 'rest') completeTimer(timer.endAt, false, timer.endAt);
+      else continueAfterCountdown(timer.endAt);
+    }
+
+    function chooseAfterFocus(keepFocusing) {
+      if (state.breakAlert?.mode !== 'focus') return;
+      const now = Date.now();
+      const alert = state.breakAlert;
+      nativeTimer?.dismissAlarm(alert.id);
+      if (!nativeTimer) navigator.vibrate?.(0);
+      delete state.breakAlert;
+      syncBreakAlarm(now);
+      if (keepFocusing) continueAfterCountdown(now);
+      else completeTimer(now, false, now);
+    }
+
+    function completeTimer(now = Date.now(), early = false, breakStart = null) {
       const finished = state.timer;
       const countingUp = isCountUpFocus(finished);
       let nextMode = 'focus';
@@ -1586,14 +1739,17 @@
         const taskId = task?.id ?? null;
         const taskName = task?.name ?? null;
         const duration = countingUp ? elapsedTime(now) : early ? finished.duration - remainingTime(now) : finished.duration;
-        if (duration > 0) state.records.push({ id, taskId, taskName, kind, duration, endAt: early ? now : finished.endAt });
+        if (duration > 0) {
+          state.records.push({ id, taskId, taskName, kind, duration, endAt: early ? now : finished.endAt });
+          state.receiptId = id;
+        }
         const name = taskName ? tr(`「${taskName}」`, `“${taskName}” · `) : '';
-        if (countingUp) {
+        if (kind === 'countup') {
           nextMode = 'rest';
           message = tr(`${name}已专注 ${durationText(duration)}，可以休息了。`, `${name}Focused for ${durationText(duration)}. Time for a break.`);
-        } else if (!early) {
+        } else if (!early || finished.overtime) {
+          nextMode = nextCountdownBreak();
           state.cycle += 1;
-          nextMode = state.cycle === CYCLE_SIZE ? 'long' : 'short';
           message = tr(`${name}完成 1 个番茄，可以${modeNames[nextMode]}了。`, `${name}Session complete. Time for a ${modeNames[nextMode].toLowerCase()}.`);
         } else {
           nextMode = 'short';
@@ -1608,6 +1764,9 @@
         nativeTimer?.ringBreak(finished.id, state.breakAlert.ringUntil, state.settings.sound, english);
       }
       state.timer = timerForPhase(nextMode, finished.kind);
+      if (breakStart !== null) {
+        Object.assign(state.timer, { status: 'running', id: `${finished.id}-break`, endAt: breakStart + state.timer.duration });
+      }
       if (byId('confirm-dialog').open) byId('confirm-dialog').close();
       if (byId('duration-dialog').open) byId('duration-dialog').close();
       saveState();
@@ -1617,18 +1776,19 @@
       if (timedBreak) syncBreakAlarm(now);
       else {
         showCompletion();
-        if (state.settings.sound) {
+        if (breakStart === null && state.settings.sound) {
           if (early) unlockAudio();
           if (early || audioContext?.state === 'running') playBell();
         }
       }
-      showToast(message);
+      if (view === 'report' || finished.mode !== 'focus') showToast(message);
     }
 
     function settleTimer(now = Date.now()) {
       const { status, endAt } = state.timer;
       if (status !== 'running' || endAt === null || endAt > now) return false;
-      completeTimer(now);
+      if (state.timer.mode === 'focus' && !isCountUpFocus()) focusDeadline(now);
+      else completeTimer(now);
       return true;
     }
 
@@ -1644,9 +1804,16 @@
       timer.status = 'paused';
     }
 
+    function resumeTimer(timer, now) {
+      timer.status = 'running';
+      if (isCountUpFocus(timer)) timer.resumedAt = now;
+      else timer.endAt = now + timer.remaining;
+    }
+
     function toggleTimer() {
+      syncNativeControls();
       const now = Date.now();
-      if (settleTimer(now)) return;
+      if (settleTimer(now) || state.breakAlert?.mode === 'focus') return;
       hideCompletion();
       const timer = state.timer;
       const countingUp = isCountUpFocus(timer);
@@ -1659,11 +1826,10 @@
       } else {
         if (timer.status === 'idle') {
           timer.id = newId();
+          if (timer.mode === 'focus') delete state.receiptId;
           if (timer.mode === 'focus' && !countingUp && state.cycle === CYCLE_SIZE) state.cycle = 0;
         }
-        timer.status = 'running';
-        if (countingUp) timer.resumedAt = now;
-        else timer.endAt = now + timer.remaining;
+        resumeTimer(timer, now);
         nativeTimer?.requestNotifications();
       }
       saveState();
@@ -1672,7 +1838,7 @@
 
     function finishTimer() {
       const now = Date.now();
-      if (state.timer.status === 'idle' || settleTimer(now)) return;
+      if (state.timer.status === 'idle' || state.breakAlert?.mode === 'focus' || settleTimer(now)) return;
       completeTimer(now, true);
       byId('toggle-timer').focus({ preventScroll: true });
     }
@@ -1825,15 +1991,41 @@
       showToast(tr('任务已删除。专注记录已保存在报告中。', 'Task deleted. Its focus sessions are still in Reports.'));
     }
 
-    function chooseTask(id) {
+    function chooseTask(id, toggle = true) {
       settleTimer();
-      state.selectedId = state.selectedId === id ? null : id;
+      if (state.breakAlert?.mode === 'focus') return;
+      state.selectedId = toggle && state.selectedId === id ? null : id;
       const task = selectedTask();
       saveState();
       renderSelection();
       renderTimer();
       changeView('timer');
       showToast(task ? tr(`已选择「${task.name}」。`, `Selected “${task.name}”.`) : tr('已取消选择任务。', 'Task deselected.'));
+    }
+
+    function openTaskPicker() {
+      const tasks = new Map(state.tasks.map((task) => [task.id, task]));
+      const recent = new Set(tasks.has(state.selectedId) ? [state.selectedId] : []);
+      for (let index = state.records.length - 1; index >= 0 && recent.size < tasks.size; index--) {
+        const { taskId } = state.records[index];
+        if (tasks.has(taskId)) recent.add(taskId);
+      }
+      const ordered = [...new Set([...recent, ...tasks.keys()])].map((id) => tasks.get(id)).filter(Boolean);
+      const list = byId('task-picker-list');
+      const dialog = byId('task-picker');
+      list.replaceChildren();
+      for (const task of [...ordered, { id: null, name: tr('自由专注', 'Free focus') }]) {
+        const button = element('button', 'soft-button', task.name);
+        button.type = 'button';
+        button.setAttribute('aria-pressed', state.selectedId === task.id);
+        button.addEventListener('click', () => {
+          dialog.close();
+          chooseTask(task.id, false);
+        });
+        list.append(button);
+      }
+      dialog.showModal();
+      list.querySelector('[aria-pressed="true"]')?.focus({ preventScroll: true });
     }
 
     function updateAssignChoice() {
@@ -1844,13 +2036,17 @@
     }
 
     function openAssignTask(record) {
-      if (!record || record.taskId || record.taskName) return;
+      if (!record) return;
       assigningRecordId = record.id;
+      const assigned = Boolean(record.taskId || record.taskName);
+      byId('assign-title').textContent = assigned ? tr('修改任务', 'Change task') : tr('补记任务', 'Add a task to this session');
       const date = new Date(record.endAt);
       byId('assign-detail').textContent = `${shortDate(date)} ${clockDate.format(date)} · ${durationText(record.duration)}`;
       const choice = byId('assign-choice');
       choice.replaceChildren(new Option(tr('新建任务', 'Create a new task'), ''));
       for (const task of state.tasks) choice.add(new Option(task.name, task.id));
+      if (assigned) choice.add(new Option(tr('不关联任务', 'No task'), '__unassigned'));
+      if (state.tasks.some(({ id }) => id === record.taskId)) choice.value = record.taskId;
       byId('assign-name').value = '';
       byId('assign-name').setCustomValidity('');
       updateAssignChoice();
@@ -1994,12 +2190,17 @@
 
     function placeRingCallouts(slices, svg) {
       const labels = element('ul', 'ring-callouts');
-      labels.setAttribute('aria-hidden', 'true');
       for (const [index, slice] of slices.entries()) {
         const label = element('li', 'ring-callout');
+        label.dataset.ringIndex = index;
         const duration = durationText(slice.duration);
-        label.title = `${slice.label} · ${duration}`;
-        label.append(element('strong', '', slice.label), element('span', '', duration));
+        const button = element('button');
+        button.type = 'button';
+        button.title = `${slice.label} · ${duration}`;
+        button.setAttribute('aria-pressed', 'false');
+        button.setAttribute('aria-controls', 'history-section');
+        button.append(element('strong', '', slice.label), element('span', '', duration));
+        label.append(button);
         label.style.setProperty('--slice-color', slice.color);
         label.style.setProperty('--key-delay', `${730 + index * 48}ms`);
         slice.callout = label;
@@ -2019,7 +2220,7 @@
           const elbow = 100 + side * 95;
           const shoulder = 100 + side * 106;
           const tip = 100 + side * 112;
-          const leader = reportSVG('g', { class: 'ring-leader', 'aria-hidden': 'true' });
+          const leader = reportSVG('g', { class: 'ring-leader', 'aria-hidden': 'true', 'data-ring-index': slice.index });
           leader.style.setProperty('--slice-color', slice.color);
           leader.style.setProperty('--key-delay', slice.callout.style.getPropertyValue('--key-delay'));
           leader.append(reportSVG('path', {
@@ -2065,7 +2266,7 @@
         const width = Math.min(15, .68 * length);
         const inset = single ? 0 : 50 * (width + gap) / circumference;
         const slice = reportSVG('circle', {
-          ...circle, class: 'ring-slice', 'stroke-width': width, 'stroke-linecap': 'round',
+          ...circle, class: 'ring-slice', 'data-ring-index': index, 'stroke-width': width, 'stroke-linecap': 'round',
           'stroke-dasharray': `${arc - 2 * inset} ${100 - arc + 2 * inset}`, 'stroke-dashoffset': -offset - inset
         });
         slice.style.setProperty('--slice-color', color);
@@ -2079,7 +2280,7 @@
         const edge = radius + width / 2;
         const outer = radius + 13;
         callouts.push({
-          label, duration, color, side: x < 0 ? -1 : 1,
+          label, duration, color, index, side: x < 0 ? -1 : 1,
           edgeX: 100 + x * edge, edgeY: 100 + y * edge, outerX: 100 + x * outer, outerY: 100 + y * outer
         });
         offset += arc;
@@ -2197,7 +2398,7 @@
       const filtered = reportTaskFilter !== undefined;
       const filterLabel = byId('history-filter');
       filterLabel.hidden = !filtered;
-      const selectedName = reportTaskFilter ?? unassigned();
+      const selectedName = Array.isArray(reportTaskFilter) ? tr('其他任务', 'Other tasks') : reportTaskFilter ?? unassigned();
       filterLabel.textContent = filtered ? tr(`「${selectedName}」· ${sessions(records.length)}`, `“${selectedName}” · ${sessions(records.length)}`) : '';
       byId('clear-report-filter').hidden = !filtered;
       const list = byId('history');
@@ -2210,15 +2411,21 @@
         const detail = english ? finishedAt : `${finishedAt} 完成`;
         const kindDetail = kind === 'countup' ? ` · ${kindNames.countup}` : '';
         const row = reportRow(taskName ?? unassigned(), detail + kindDetail, duration, null, colors.get(nameFor(record)));
-        if (!taskName && !taskId) {
-          const controls = element('span', 'history-controls');
-          controls.append(row.lastElementChild);
-          const assign = element('button', 'text-button assign-button', tr('补任务', 'Add task'));
-          assign.type = 'button';
-          assign.addEventListener('click', () => openAssignTask(record));
-          controls.append(assign);
-          row.append(controls);
+        const controls = element('span', 'history-controls');
+        controls.append(row.lastElementChild);
+        const assigned = Boolean(taskName || taskId);
+        const assign = assigned ? element('button', 'icon-button small') : element('button', 'text-button assign-button', tr('补任务', 'Add task'));
+        assign.type = 'button';
+        if (assigned) {
+          assign.title = tr('修改任务', 'Change task');
+          assign.setAttribute('aria-label', assign.title);
+          const icon = element('i', 'ico edit');
+          icon.setAttribute('aria-hidden', 'true');
+          assign.append(icon);
         }
+        assign.addEventListener('click', () => openAssignTask(record));
+        controls.append(assign);
+        row.append(controls);
         entries.append(row);
       }
       list.append(entries);
@@ -2269,16 +2476,36 @@
       const colors = new Map(slices.flatMap(({ names, color }) => names.map((name) => [name, color])));
       renderChart(chartType, records, start, end, slices);
       const taskButtons = new Map();
+      const sliceFilters = slices.map(({ names }) => names.length === 1 ? names[0] : names);
+      const ring = byId('chart').querySelector('.ring-layout');
+      const matches = (first, second) => first === second
+        || (Array.isArray(first) && Array.isArray(second) && first.length === second.length && first.every((name) => second.includes(name)));
       const applyTaskFilter = (name, moveFocus = true) => {
         reportTaskFilter = name;
         for (const [taskName, button] of taskButtons) button.setAttribute('aria-pressed', taskName === name);
-        renderReportHistory(name === undefined ? records : groups.get(name)?.records ?? [], nameFor, colors);
+        const shown = name === undefined ? records : Array.isArray(name) ? records.filter((record) => name.includes(nameFor(record))) : groups.get(name)?.records ?? [];
+        renderReportHistory(shown, nameFor, colors);
+        if (ring) {
+          ring.toggleAttribute('data-filtered', name !== undefined && slices.some(({ names }) => names.includes(name) || matches(names, name)));
+          for (const node of ring.querySelectorAll('[data-ring-index]')) {
+            const index = Number(node.dataset.ringIndex);
+            const selected = matches(sliceFilters[index], name) || (Array.isArray(sliceFilters[index]) && sliceFilters[index].includes(name));
+            node.dataset.selected = selected;
+            node.querySelector('button')?.setAttribute('aria-pressed', selected);
+          }
+        }
         if (moveFocus) {
           const heading = byId('history-title');
           heading.focus({ preventScroll: true });
           heading.scrollIntoView({ behavior: reducedMotion.matches ? 'instant' : 'smooth', block: 'start' });
         }
       };
+      if (ring) ring.addEventListener('click', (event) => {
+        const slice = event.target.closest('.ring-slice, .ring-callout button')?.closest('[data-ring-index]');
+        if (!slice) return;
+        const filter = sliceFilters[Number(slice.dataset.ringIndex)];
+        applyTaskFilter(matches(reportTaskFilter, filter) ? undefined : filter);
+      });
       const breakdown = byId('breakdown');
       breakdown.replaceChildren();
       for (const [index, [name, group]] of sortedGroups.entries()) {
@@ -2364,21 +2591,29 @@
     });
     byId('finish-timer').addEventListener('click', finishTimer);
     byId('dismiss-break-alarm').addEventListener('click', dismissBreakAlarm);
+    byId('focus-alarm-continue').addEventListener('click', () => chooseAfterFocus(true));
+    byId('focus-alarm-rest').addEventListener('click', () => chooseAfterFocus(false));
     byId('break-alarm').addEventListener('cancel', (event) => event.preventDefault());
+    byId('next-task').addEventListener('click', openTaskPicker);
+    byId('picker-add-task').addEventListener('click', () => {
+      byId('task-picker').close();
+      openTaskEditor();
+    });
+    byId('edit-recent').addEventListener('click', () => openAssignTask(state.records.find(({ id }) => id === state.receiptId)));
     byId('assign-recent').addEventListener('click', () => openAssignTask(recentUnassigned));
     byId('assign-choice').addEventListener('change', updateAssignChoice);
     byId('assign-name').addEventListener('input', () => byId('assign-name').setCustomValidity(''));
     byId('assign-form').addEventListener('submit', (event) => {
       event.preventDefault();
       const record = state.records.find(({ id }) => id === assigningRecordId);
-      if (!record || record.taskId || record.taskName) {
+      if (!record) {
         byId('assign-dialog').close();
         return;
       }
       const input = byId('assign-name');
       const choice = byId('assign-choice').value;
       let task = state.tasks.find(({ id }) => id === choice);
-      if (!task) {
+      if (!task && choice !== '__unassigned') {
         const name = input.value.trim();
         if (!name) {
           input.setCustomValidity(tr('请输入任务名称。', 'Enter a task name.'));
@@ -2388,15 +2623,17 @@
         task = { id: newId(), name, note: '' };
         state.tasks.push(task);
       }
-      record.taskId = task.id;
-      record.taskName = task.name;
+      const wasAssigned = Boolean(record.taskId || record.taskName);
+      record.taskId = task?.id ?? null;
+      record.taskName = task?.name ?? null;
+      delete record.reportTaskName;
       saveState();
       byId('assign-dialog').close();
       if (reportTaskFilter === null) reportTaskFilter = undefined;
       renderTasks();
       renderTimer();
       if (view === 'report') renderReport();
-      showToast(tr('已补记到这轮专注。', 'Task added to this session.'));
+      showToast(wasAssigned ? tr('这轮的任务已更新。', 'Session task updated.') : tr('已补记到这轮专注。', 'Task added to this session.'));
     });
     byId('reset-timer').addEventListener('click', () => requestTimerChange(state.timer.mode, true));
     byId('reset-cycle').addEventListener('click', () => {
@@ -2508,10 +2745,17 @@
         ? tr('正向专注由你结束。休息时长从下一轮开始生效。', 'Finish count-up sessions when you’re ready. Break length changes apply to the next session.')
         : tr('每完成 4 个番茄，下一阶段切换为长休息。时长修改从下一轮开始生效。', 'A long break follows every 4 sessions. Duration changes apply to the next session.');
       byId('sounds').checked = state.settings.sound;
+      byId('finish-settings').hidden = countup;
+      byId('focus-alert').value = state.settings.focusAlert;
+      byId('focus-after').value = state.settings.focusAfter;
+      byId('focus-after-field').hidden = state.settings.focusAlert === 'alarm';
       byId('button-sounds').checked = state.settings.buttonSound;
       updateFloatingSetting();
       byId('language').value = tr('zh', 'en');
       byId('settings-dialog').showModal();
+    });
+    byId('focus-alert').addEventListener('change', (event) => {
+      byId('focus-after-field').hidden = event.currentTarget.value !== 'chime';
     });
     byId('settings-form').addEventListener('submit', (event) => {
       event.preventDefault();
@@ -2521,6 +2765,8 @@
         if (!input.disabled) state.settings[mode] = input.valueAsNumber;
       }
       state.settings.sound = byId('sounds').checked;
+      state.settings.focusAlert = byId('focus-alert').value;
+      state.settings.focusAfter = byId('focus-after').value;
       state.settings.buttonSound = byId('button-sounds').checked;
       if (nativeTimer && nativeTimer.floatingEnabled() !== byId('floating-timer').checked) {
         nativeTimer.setFloating(byId('floating-timer').checked);
@@ -2554,7 +2800,8 @@
 
     function refresh() {
       const now = new Date();
-      settleTimer(now.getTime());
+      syncNativeControls();
+      if (settleTimer(now.getTime())) settleTimer(now.getTime());
       if (state.breakAlert || byId('break-alarm').open) syncBreakAlarm(now.getTime());
       if (state.timer.status === 'running') renderClock(now.getTime());
       if (displayedDay !== now.toDateString()) {

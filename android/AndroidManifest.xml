@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="app.yike.focus.preview"
-    android:versionCode="10"
-    android:versionName="0.4.1">
+    android:versionCode="11"
+    android:versionName="0.5.0">
     <uses-sdk android:minSdkVersion="26" android:targetSdkVersion="34" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
@@ -34,7 +34,7 @@
             android:name="app.yike.focus.BreakAlarmService"
             android:exported="false"
             android:foregroundServiceType="specialUse">
-            <property android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE" android:value="Finite user-started break timer alarm sounds and vibration" />
+            <property android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE" android:value="Finite user-started focus and break alarm sounds and vibration" />
         </service>
     </application>
 </manifest>

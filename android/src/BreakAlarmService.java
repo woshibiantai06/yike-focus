@@ -28,7 +28,7 @@ public final class BreakAlarmService extends Service {
         }
         String id = intent.getStringExtra("id");
         boolean english = intent.getBooleanExtra("english", false);
-        startForeground(TimerAlerts.ALARM_NOTIFICATION, TimerAlerts.alarmNotification(this, id, english));
+        startForeground(TimerAlerts.ALARM_NOTIFICATION, TimerAlerts.alarmNotification(this, id, english, intent.getBooleanExtra("focus", false)));
         stopRinging();
         long until = intent.getLongExtra("until", 0);
         long remaining = Math.min(180_000L, until - System.currentTimeMillis());
