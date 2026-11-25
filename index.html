@@ -485,6 +485,7 @@
     .report-overview { margin: 0 0 13px; grid-template-columns: repeat(3, minmax(0, 1fr)); }
     .report-overview .overview-card { min-height: 90px; }
     .report-card { margin-bottom: 13px; padding: 18px 20px; min-width: 0; }
+    .report-card:has(> .chart[data-type="ring"]) { border-color: transparent; }
     .report-card h2 { font-size: 16px; margin-bottom: 7px; }
     .report-subtitle, .empty { color: var(--muted); font-size: 13px; line-height: 1.65; }
     .chart { margin-top: 13px; overflow: clip; }
@@ -500,16 +501,37 @@
     .chart-amount { display: grid; justify-items: center; width: 100%; }
     .chart-label { color: var(--muted); font-size: 11px; text-align: center; }
     @keyframes grow { from { transform: scaleY(.06); } to { transform: scaleY(1); } }
-    .ring-chart { display: grid; justify-items: center; padding-block: 4px 9px; }
-    .ring-face { width: 100%; max-width: 232px; aspect-ratio: 1; position: relative; display: grid; place-items: center; justify-self: center; }
+    .ring-chart { container-type: inline-size; }
+    .ring-layout { position: relative; display: grid; justify-items: center; width: min(100%, 640px); padding-block: 4px 9px; margin-inline: auto; }
+    .ring-face { width: min(196px, 100%); aspect-ratio: 1; position: relative; display: grid; place-items: center; }
+    .ring-layout[data-empty="true"] .ring-face { height: 110px; aspect-ratio: auto; }
     .ring-face svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
-    .ring-track { stroke: var(--outline); }
     .ring-slice { stroke: var(--slice-color); }
     .ring-sweep { animation: trace-report-ring .78s var(--ease) both; }
     @keyframes trace-report-ring { from { stroke-dashoffset: 100; } to { stroke-dashoffset: 0; } }
     .ring-total { position: relative; width: 64%; text-align: center; pointer-events: none; }
     .ring-total strong { display: block; font-size: clamp(16px, 4vw, 20px); line-height: 1.2; font-weight: 850; text-wrap: balance; word-break: keep-all; }
     .ring-total span { color: var(--muted); font-size: 11px; }
+    .ring-leader { display: none; }
+    .ring-leader path { fill: none; stroke: var(--slice-color); stroke-width: 1.1; stroke-linecap: round; stroke-linejoin: round; opacity: .78; }
+    .ring-leader circle { fill: var(--slice-color); }
+    .ring-callouts { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 104px), 1fr)); gap: 9px 16px; width: min(100%, 390px); margin: 4px 0 0; padding: 0 5px; list-style: none; }
+    .ring-callout { position: relative; min-width: 0; padding-inline-start: 13px; animation: ring-key-enter .36s var(--ease) var(--key-delay) both; }
+    .ring-callout::before { content: ""; position: absolute; inset: .34em auto auto 0; width: 7px; height: 7px; border-radius: 50%; background: var(--slice-color); }
+    .ring-callout strong, .ring-callout span { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .ring-callout strong { font-size: 13px; line-height: 1.3; }
+    .ring-callout span { color: var(--muted); font-size: 11px; line-height: 1.35; }
+    @container (min-width: 520px) {
+      .ring-layout { --ring-size: 232px; padding-block: 0; }
+      .ring-face { width: var(--ring-size); }
+      .ring-leader { display: initial; animation: ring-leader-enter .32s var(--ease) var(--key-delay) both; }
+      .ring-callouts { display: contents; }
+      .ring-callout { position: absolute; top: var(--row-y); translate: 0 -50%; padding-inline-start: 0; }
+      .ring-callout[data-side="left"] { left: 0; right: calc(50% + var(--ring-size) * .56 + 9px); text-align: right; }
+      .ring-callout[data-side="right"] { right: 0; left: calc(50% + var(--ring-size) * .56 + 9px); }
+      .ring-callout::before { display: none; }
+    }
+    @keyframes ring-leader-enter { from { opacity: 0; } }
     .ring-legend-item { animation: ring-key-enter .36s var(--ease) var(--key-delay) both; }
     .data-labels[data-slice] .data-name::before {
       content: ""; display: inline-block; width: 8px; height: 8px; vertical-align: .06em; border-radius: 50%;
@@ -732,7 +754,6 @@
       .timer-actions .primary { min-height: 46px; }
     }
     @media (max-width: 490px) {
-      .ring-face { width: min(196px, 80%); }
       .calendar-grid { gap: 3px; }
       .calendar-day { border-radius: 8px; }
       .calendar-day small { font-size: 8px; }
@@ -750,6 +771,7 @@
       .dial-scale, .dial-completion, .dial-completion-ring, .dial-completion-check, .dial-completion-mark,
       #break-alarm[data-ringing] :is(.alarm-clock, .alarm-shadow, .alarm-lines),
       .dial[data-complete="true"] :is(.dial-marks, .dial-cursor, .dial-inner) { animation: none; }
+      .ring-sweep, .ring-leader, .ring-callout, .ring-legend-item { animation: none; }
       #toggle-timer[data-holding] .hold-ring rect { animation: none; stroke-dashoffset: 0; opacity: .5; }
     }
   </style>
@@ -1970,42 +1992,104 @@
       return node;
     }
 
+    function placeRingCallouts(slices, svg) {
+      const labels = element('ul', 'ring-callouts');
+      labels.setAttribute('aria-hidden', 'true');
+      for (const [index, slice] of slices.entries()) {
+        const label = element('li', 'ring-callout');
+        const duration = durationText(slice.duration);
+        label.title = `${slice.label} · ${duration}`;
+        label.append(element('strong', '', slice.label), element('span', '', duration));
+        label.style.setProperty('--slice-color', slice.color);
+        label.style.setProperty('--key-delay', `${730 + index * 48}ms`);
+        slice.callout = label;
+        labels.append(label);
+      }
+      const rowGap = 30;
+      const top = 22;
+      const bottom = 178;
+      for (const side of [-1, 1]) {
+        const column = slices.filter((slice) => slice.side === side).sort((a, b) => a.outerY - b.outerY);
+        let previous = top - rowGap;
+        for (const [index, slice] of column.entries()) {
+          const y = Math.min(bottom - rowGap * (column.length - 1 - index), Math.max(slice.outerY, previous + rowGap));
+          previous = y;
+          slice.callout.dataset.side = side < 0 ? 'left' : 'right';
+          slice.callout.style.setProperty('--row-y', `${y / 2}%`);
+          const elbow = 100 + side * 95;
+          const shoulder = 100 + side * 106;
+          const tip = 100 + side * 112;
+          const leader = reportSVG('g', { class: 'ring-leader', 'aria-hidden': 'true' });
+          leader.style.setProperty('--slice-color', slice.color);
+          leader.style.setProperty('--key-delay', slice.callout.style.getPropertyValue('--key-delay'));
+          leader.append(reportSVG('path', {
+            d: `M ${slice.edgeX} ${slice.edgeY} L ${slice.outerX} ${slice.outerY} H ${elbow} L ${shoulder} ${y} H ${tip}`
+          }), reportSVG('circle', { cx: tip, cy: y, r: 1.7 }));
+          svg.append(leader);
+        }
+      }
+      return labels;
+    }
+
     function buildRing(slices) {
       const panel = element('div', 'ring-chart');
+      const layout = element('div', 'ring-layout');
+      layout.dataset.empty = !slices.length;
       const face = element('div', 'ring-face');
       const total = slices.reduce((sum, slice) => sum + slice.duration, 0);
       const svg = reportSVG('svg', { viewBox: '0 0 200 200', role: 'img' });
       const label = slices.map(({ label, duration }) => `${label} · ${durationText(duration)}`).join(tr('，', ', '));
       svg.setAttribute('aria-label', label || tr('还没有专注记录', 'No focus sessions yet'));
-      const circle = { cx: 100, cy: 100, r: 78, pathLength: 100, fill: 'none', transform: 'rotate(-90 100 100)' };
+      const radius = 78;
+      const circumference = 2 * Math.PI * radius;
+      const circle = { cx: 100, cy: 100, r: radius, pathLength: 100, fill: 'none', transform: 'rotate(-90 100 100)' };
       const sweep = reportSVG('circle', {
         ...circle, class: 'ring-sweep', stroke: 'white', 'stroke-width': 19,
         'stroke-dasharray': '100 100', 'stroke-dashoffset': 0
       });
       const mask = reportSVG('mask', { id: 'report-ring-mask', 'mask-type': 'alpha' });
       mask.append(sweep);
-      const track = reportSVG('circle', { ...circle, class: 'ring-track', 'stroke-width': 15 });
       const arcs = reportSVG('g', { mask: 'url(#report-ring-mask)' });
+      svg.append(mask, arcs);
+      // Reserve a small visible span for very short sessions. Labels always use the actual durations.
+      const visibleDurations = slices.map(({ duration }) => Math.max(duration, total * .008));
+      const visibleTotal = visibleDurations.reduce((sum, duration) => sum + duration, 0);
+      const single = slices.length === 1;
       let offset = 0;
-      for (const { duration, color, label } of slices) {
-        const arc = 100 * duration / total;
-        const gap = slices.length === 1 ? 0 : Math.min(3.5, arc / 3);
+      const callouts = [];
+      for (const [index, descriptor] of slices.entries()) {
+        const { duration, color, label } = descriptor;
+        const arc = 100 * visibleDurations[index] / visibleTotal;
+        const length = circumference * arc / 100;
+        const gap = Math.min(3.2, .2 * length);
+        const width = Math.min(15, .68 * length);
+        const inset = single ? 0 : 50 * (width + gap) / circumference;
         const slice = reportSVG('circle', {
-          ...circle, class: 'ring-slice', 'stroke-width': 15, 'stroke-linecap': gap >= 3 ? 'round' : 'butt',
-          'stroke-dasharray': `${arc - gap} ${100 - arc + gap}`, 'stroke-dashoffset': -offset - gap / 2
+          ...circle, class: 'ring-slice', 'stroke-width': width, 'stroke-linecap': 'round',
+          'stroke-dasharray': `${arc - 2 * inset} ${100 - arc + 2 * inset}`, 'stroke-dashoffset': -offset - inset
         });
         slice.style.setProperty('--slice-color', color);
         const title = reportSVG('title', {});
         title.textContent = `${label} · ${durationText(duration)}`;
         slice.append(title);
         arcs.append(slice);
+        const angle = single ? Math.PI / 2 : 2 * Math.PI * (offset + arc / 2) / 100;
+        const x = Math.sin(angle);
+        const y = -Math.cos(angle);
+        const edge = radius + width / 2;
+        const outer = radius + 13;
+        callouts.push({
+          label, duration, color, side: x < 0 ? -1 : 1,
+          edgeX: 100 + x * edge, edgeY: 100 + y * edge, outerX: 100 + x * outer, outerY: 100 + y * outer
+        });
         offset += arc;
       }
-      svg.append(mask, track, arcs);
       const caption = element('div', 'ring-total');
       caption.append(element('strong', '', durationText(total)), element('span', '', tr('专注时长', 'Focus time')));
       face.append(svg, caption);
-      panel.append(face);
+      layout.append(face);
+      if (callouts.length) layout.append(placeRingCallouts(callouts, svg));
+      panel.append(layout);
       return panel;
     }
 
@@ -2176,11 +2260,10 @@
       }[reportPeriod];
       byId('trend-title').textContent = chartType === 'ring' ? tr('专注分布', 'Focus distribution')
         : chartType === 'calendar' ? tr('专注日历', 'Focus calendar') : tr('专注趋势', 'Focus trend');
-      byId('trend-label').textContent = chartType === 'ring'
-        ? tr('扇区颜色对应下方的任务和记录。', 'Slice colors match the tasks and sessions below.')
-        : chartType === 'calendar'
-          ? tr('颜色越深，当天专注越久。点日期查看记录。', 'Darker days have more focus time. Tap a date to see its sessions.')
-          : barSubtitle;
+      byId('trend-label').hidden = chartType === 'ring';
+      byId('trend-label').textContent = chartType === 'calendar'
+        ? tr('颜色越深，当天专注越久。点日期查看记录。', 'Darker days have more focus time. Tap a date to see its sessions.')
+        : barSubtitle;
       const sortedGroups = [...groups].sort(([, a], [, b]) => b.duration - a.duration);
       const slices = chartType === 'ring' ? circularGroups(sortedGroups) : [];
       const colors = new Map(slices.flatMap(({ names, color }) => names.map((name) => [name, color])));
