@@ -200,6 +200,52 @@
     button:focus-visible, input:focus-visible, textarea:focus-visible, [tabindex="0"]:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
     :root[data-pointer-focus] :focus { outline: none; }
     [hidden] { display: none !important; }
+    .desktop-cloth {
+      --cloth-width: max(100vw, 160vh);
+      --cloth-height: max(100vh, 62.5vw);
+      --cloth-idle: .22;
+      --cloth-near: .73;
+      position: fixed; inset: 0; z-index: -1; overflow: clip; pointer-events: none;
+      mix-blend-mode: soft-light;
+    }
+    :root[data-theme="report"]:is([data-report-theme="paper"], [data-report-theme="mint"]) .desktop-cloth {
+      --cloth-idle: .055; --cloth-near: .19; mix-blend-mode: multiply;
+    }
+    .desktop-cloth::before, .cloth-contact::before {
+      content: ""; position: absolute; inset: 0;
+      background-image: var(--cloth-texture);
+      background-size: var(--cloth-width) var(--cloth-height);
+      background-repeat: no-repeat;
+    }
+    .desktop-cloth::before {
+      background-position: center;
+      opacity: var(--cloth-idle); filter: blur(5px); transform: scale(1.025);
+      transition: opacity .6s var(--ease);
+    }
+    .cloth-contact {
+      --cloth-radius-x: clamp(175px, 22vw, 295px);
+      --cloth-radius-y: clamp(135px, 21vh, 225px);
+      position: absolute; top: 0; left: 0;
+      width: calc(2 * var(--cloth-radius-x)); height: calc(2 * var(--cloth-radius-y));
+      transform: translate3d(var(--cloth-x, 0px), var(--cloth-y, 0px), 0) translate(-50%, -50%);
+      mask-image: radial-gradient(ellipse closest-side, #000 12%, #000e 42%, #0006 73%, transparent 100%);
+      opacity: 0; transition: opacity .54s var(--ease);
+    }
+    .desktop-cloth[data-contact] .cloth-contact { opacity: var(--cloth-near); }
+    .cloth-contact::before {
+      background-position:
+        calc((100vw - var(--cloth-width)) / 2 - var(--cloth-x) + var(--cloth-radius-x))
+        calc((100vh - var(--cloth-height)) / 2 - var(--cloth-y) + var(--cloth-radius-y));
+      transform: scale(1.015);
+      transition: transform .68s var(--ease);
+    }
+    .desktop-cloth[data-contact] .cloth-contact::before { transform: scale(1.105); }
+    .cloth-contact::after {
+      content: ""; position: absolute; inset: 0;
+      background: radial-gradient(ellipse at 49% 38%, #fff4, transparent 53%),
+        radial-gradient(ellipse at 50% 48%, transparent 41%, #230e2860 69%, transparent 78%);
+      opacity: .43;
+    }
     .launch {
       position: fixed; inset: 0; z-index: 40; display: grid; place-items: center; pointer-events: none;
       background: radial-gradient(ellipse at 50% 44%, #bd5262, transparent 68%), #a33948;
@@ -889,6 +935,7 @@
   </style>
 </head>
 <body>
+  <div class="desktop-cloth" id="desktop-cloth" aria-hidden="true" hidden><div class="cloth-contact"></div></div>
   <div class="launch" id="launch" aria-hidden="true">
     <div class="launch-brand">
       <svg class="launch-mark" viewBox="0 0 80 80" fill="none">
@@ -3325,6 +3372,105 @@
       }
       restoreRunningAudio();
     }, true);
+    function makeClothTexture() {
+      const canvas = document.createElement('canvas');
+      const width = canvas.width = 800;
+      const height = canvas.height = 500;
+      const context = canvas.getContext('2d');
+      if (!context) return null;
+      const image = context.createImageData(width, height);
+      for (let y = 0, index = 0; y < height; y++) {
+        const v = y / height;
+        for (let x = 0; x < width; x++, index += 4) {
+          const u = x / width;
+          const phase = 16 * u + 10 * v + 1.45 * Math.sin(4.8 * v + 5.9 * u) + .52 * Math.sin(10 * v - 5 * u);
+          const fold = Math.cos(phase);
+          const ridge = Math.max(fold, 0) ** 5;
+          const lengthThread = Math.cos(2.05 * x + .68 * y + 5.2 * fold);
+          const crossThread = Math.cos(1.87 * y - .64 * x + 2.1 * Math.sin(phase));
+          const weave = (11 * lengthThread + 8 * crossThread - 7 * lengthThread * crossThread) * (.82 + .18 * fold);
+          const lighting = 106 + 39 * Math.sin(phase) + 34 * ridge + 17 * Math.cos(5.6 * u - 4.1 * v);
+          const shade = lighting + weave;
+          image.data[index] = image.data[index + 1] = image.data[index + 2] = shade;
+          image.data[index + 3] = 255;
+        }
+      }
+      context.putImageData(image, 0, 0);
+      return canvas.toDataURL('image/webp', .87);
+    }
+
+    function setupDesktopCloth() {
+      if (nativeTimer) return;
+      const supported = matchMedia('(min-width: 651px) and (hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference)');
+      const layer = byId('desktop-cloth');
+      const contact = layer.firstElementChild;
+      let texture;
+      let idle;
+      let frame = 0;
+      let lastFrame;
+      let x, y, targetX, targetY;
+      const position = () => {
+        contact.style.setProperty('--cloth-x', `${x.toFixed(2)}px`);
+        contact.style.setProperty('--cloth-y', `${y.toFixed(2)}px`);
+      };
+      const settle = (now) => {
+        const blend = 1 - Math.exp(-Math.min(48, now - lastFrame) / 72);
+        lastFrame = now;
+        x += (targetX - x) * blend;
+        y += (targetY - y) * blend;
+        if (Math.hypot(x - targetX, y - targetY) > .6) {
+          frame = requestAnimationFrame(settle);
+        } else {
+          x = targetX;
+          y = targetY;
+          frame = 0;
+        }
+        position();
+      };
+      const release = () => {
+        layer.removeAttribute('data-contact');
+        cancelAnimationFrame(frame);
+        frame = 0;
+      };
+      const prepare = () => {
+        idle = undefined;
+        if (!supported.matches) return;
+        texture ??= makeClothTexture();
+        if (!texture) return;
+        layer.style.setProperty('--cloth-texture', `url("${texture}")`);
+        layer.hidden = false;
+      };
+      const update = () => {
+        if (!supported.matches) {
+          release();
+          layer.hidden = true;
+        } else if (texture) {
+          layer.hidden = false;
+        } else if (idle === undefined) {
+          idle = window.requestIdleCallback?.(prepare, { timeout: 900 }) ?? window.setTimeout(prepare, 0);
+        }
+      };
+      document.addEventListener('pointermove', (event) => {
+        if (layer.hidden || event.pointerType !== 'mouse') return;
+        targetX = event.clientX;
+        targetY = event.clientY;
+        if (!layer.hasAttribute('data-contact')) {
+          x = targetX;
+          y = targetY;
+          position();
+          layer.setAttribute('data-contact', '');
+        } else if (!frame) {
+          lastFrame = performance.now();
+          frame = requestAnimationFrame(settle);
+        }
+      }, { passive: true });
+      document.documentElement.addEventListener('pointerleave', release);
+      window.addEventListener('blur', release);
+      document.addEventListener('visibilitychange', () => { if (document.hidden) release(); });
+      supported.addEventListener('change', update);
+      update();
+    }
+
     window.addEventListener('pageshow', refresh);
     reducedMotion.addEventListener('change', syncDial);
     applyLanguage();
@@ -3334,6 +3480,7 @@
     renderTimer();
     renderToday();
     refresh();
+    setupDesktopCloth();
     requestAnimationFrame(() => { document.documentElement.dataset.ready = ''; });
     setInterval(refresh, 200);
   </script>
