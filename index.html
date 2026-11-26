@@ -271,9 +271,16 @@
     .tasks { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
     .task-row {
       display: flex; align-items: center; border: 1px solid var(--outline); border-radius: 15px;
-      background: var(--softer); min-width: 0; transition: border-color .22s, background .22s;
+      background: var(--deep); min-width: 0; transition: border-color .22s, background .22s;
     }
-    .task-row:has(.task-select:hover), .task-row.selected { border-color: #fff6ef69; background: #fff8f324; }
+    .task-row:has(.task-select:hover) {
+      border-color: color-mix(in srgb, var(--accent) 34%, transparent);
+      background: color-mix(in srgb, var(--accent) 7%, var(--deep));
+    }
+    .task-row.selected {
+      border-color: color-mix(in srgb, var(--accent) 59%, transparent);
+      background: color-mix(in srgb, var(--accent) 17%, var(--deep));
+    }
     .task-select {
       flex: 1; min-width: 0; padding: 12px 1px 12px 11px; border: 0; background: transparent;
       display: flex; align-items: flex-start; gap: 9px; text-align: left; border-radius: 13px;
@@ -283,25 +290,50 @@
     .task-title { display: block; font-size: 13px; font-weight: 750; overflow-wrap: anywhere; }
     .task-note { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; margin-top: 4px; font-size: 12px; line-height: 1.5; color: var(--muted); overflow-wrap: anywhere; white-space: pre-line; }
     .task-edit { margin-right: 3px; border-color: transparent; background: transparent; color: var(--muted); }
-    .task-folder { min-width: 0; }
+    .task-folder { min-width: 0; margin-top: 3px; }
     .folder-row {
-      display: flex; align-items: center; gap: 2px; min-height: 43px; padding: 2px 4px;
-      border: 1px solid var(--outline); border-radius: 14px; background: var(--soft);
+      display: flex; align-items: center; gap: 2px; min-height: 43px; padding: 2px 5px 2px 3px;
+      border: 1px solid color-mix(in srgb, var(--accent) 23%, transparent); border-radius: 10px;
+      background: linear-gradient(120deg, color-mix(in srgb, var(--accent) 14%, transparent), color-mix(in srgb, var(--accent) 5%, transparent));
+      box-shadow: inset 0 1px color-mix(in srgb, var(--accent) 9%, transparent);
+      transition: border-color .22s, background .22s;
     }
+    .folder-art {
+      position: absolute; inset: 0; overflow: clip; border-radius: inherit; pointer-events: none;
+      color: var(--accent); mask-image: linear-gradient(90deg, transparent 33%, #000 65%);
+      background: radial-gradient(ellipse at right bottom, color-mix(in srgb, var(--accent) 13%, transparent), transparent 66%);
+    }
+    .folder-art .folder-icon {
+      position: absolute; width: 122px; height: 72px; top: 8px; right: -11px;
+      opacity: .52; filter: blur(1.4px); transform: rotate(-12deg);
+    }
+    .folder-art .folder-icon::before {
+      inset: 15px 0 0; border-width: 2px; border-radius: 10px;
+      background: color-mix(in srgb, currentColor 15%, transparent);
+    }
+    .folder-art .folder-icon::after {
+      top: 6px; left: 7px; width: 33px; height: 9px; border-width: 2px; border-radius: 6px 7px 0 0;
+    }
+    .folder-row > button { position: relative; }
     .folder-row .icon-button { border-color: transparent; background: transparent; }
+    .folder-row [data-folder-add] { background: var(--softer); border-radius: 8px; }
     .folder-name {
       flex: 1; min-width: 0; border: 0; border-radius: 8px; background: transparent;
-      display: flex; align-items: center; gap: 6px; padding: 8px 2px; text-align: left;
+      display: flex; align-items: center; gap: 7px; padding: 8px 2px; text-align: left;
       font-size: 13px; font-weight: 750; overflow-wrap: anywhere;
     }
     .folder-name:hover { background: var(--softer); }
-    .folder-name .ico { flex-shrink: 0; }
+    .folder-name .folder-icon { flex-shrink: 0; color: var(--accent); }
+    .folder-name .folder-icon::before { background: color-mix(in srgb, currentColor 30%, transparent); }
     .folder-row [aria-expanded="true"] .folder-chevron { transform: rotate(90deg); }
     .folder-chevron { transition: transform .2s var(--ease); }
     .folder-contents { display: grid; grid-template-rows: 1fr; transition: grid-template-rows .23s var(--ease); }
     .folder-contents[inert] { grid-template-rows: 0fr; }
     .folder-clip { min-height: 0; overflow: clip; }
-    .folder-tasks { margin: 4px 1px 3px 9px; padding: 3px 3px 3px 7px; border-left: 1px solid var(--outline); gap: 6px; }
+    .folder-tasks {
+      margin: 4px 1px 3px 14px; padding: 3px 3px 3px 9px;
+      border-left: 1px solid color-mix(in srgb, var(--accent) 29%, transparent); gap: 6px;
+    }
     .folder-tasks:empty { display: none; }
     .task-grip { color: var(--muted); cursor: grab; touch-action: none; user-select: none; }
     .task-grip.icon-button { width: 27px; border-color: transparent; background: transparent; }
@@ -309,7 +341,7 @@
     .task-grip .ico { width: 10px; height: 15px; opacity: .72; }
     [data-sort-id] { position: relative; }
     [data-sort-id][data-dragging] { opacity: .55; }
-    [data-drop="inside"] { border-color: var(--accent); background: var(--soft); }
+    .folder-row[data-drop="inside"] { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 27%, transparent); }
     [data-drop="before"]::after, [data-drop="after"]::after {
       content: ""; position: absolute; z-index: 1; left: 3px; right: 3px; height: 3px;
       border-radius: 4px; background: var(--accent); pointer-events: none;
@@ -1420,6 +1452,9 @@
       const row = element('div', 'folder-row');
       row.dataset.sortId = folder.id;
       row.dataset.folderRow = '';
+      const art = element('span', 'folder-art');
+      art.setAttribute('aria-hidden', 'true');
+      art.append(taskIcon('folder-icon'));
       const toggle = taskButton('folder-chevron', '');
       toggle.dataset.toggleFolder = folder.id;
       toggle.setAttribute('aria-controls', `folder-${folder.id}`);
@@ -1430,7 +1465,7 @@
       title.append(taskIcon('folder-icon'), element('span', '', folder.name));
       const add = taskButton('plus', tr(`在 ${folder.name} 新建任务`, `Add a task to ${folder.name}`));
       add.dataset.folderAdd = folder.id;
-      row.append(toggle, title, taskGrip(folder.name), add);
+      row.append(art, toggle, title, taskGrip(folder.name), add);
       const contents = element('div', 'folder-contents');
       contents.id = `folder-${folder.id}`;
       const clip = element('div', 'folder-clip');
