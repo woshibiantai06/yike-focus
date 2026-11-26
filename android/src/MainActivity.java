@@ -64,6 +64,11 @@ public final class MainActivity extends Activity {
 
     private final class TimerBridge {
         @JavascriptInterface
+        public boolean isAppVisible() {
+            return TimerAlerts.isAppVisible();
+        }
+
+        @JavascriptInterface
         public void updateTimer(String json) {
             runOnUiThread(() -> {
                 try {

@@ -10,6 +10,9 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 import android.media.AudioAttributes;
 import android.media.MediaPlayer;
+import android.os.Handler;
+import android.os.Looper;
+import android.os.PowerManager;
 import java.util.Locale;
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -23,9 +26,11 @@ final class TimerAlerts {
     private static final int TIMER_NOTIFICATION = 101;
     private static final String TIMER_CHANNEL = "timer";
     private static final String ALARM_CHANNEL = "break-alarm";
+    private static final String FALLBACK_ALARM_CHANNEL = "timer-alarm-fallback";
+    private static final long CHIME_GRACE = 60_000L;
     private static final int FLAGS = PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT;
     private static JSONObject latestTimer;
-    private static boolean appVisible;
+    private static volatile boolean appVisible;
 
     private TimerAlerts() {}
 
@@ -43,8 +48,13 @@ final class TimerAlerts {
         timer.setSound(null, null);
         NotificationChannel alarm = new NotificationChannel(ALARM_CHANNEL, english ? "Break alarms" : "休息闹钟", NotificationManager.IMPORTANCE_HIGH);
         alarm.setSound(null, null);
+        NotificationChannel fallback = new NotificationChannel(FALLBACK_ALARM_CHANNEL, english ? "Timer alarm fallback" : "计时到点提醒", NotificationManager.IMPORTANCE_HIGH);
+        fallback.setSound(android.provider.Settings.System.DEFAULT_ALARM_ALERT_URI,
+            new AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_ALARM).build());
+        fallback.enableVibration(true);
         manager.createNotificationChannel(timer);
         manager.createNotificationChannel(alarm);
+        manager.createNotificationChannel(fallback);
     }
 
     private static PendingIntent openApp(Context context) {
@@ -58,7 +68,11 @@ final class TimerAlerts {
         long sequence = saved.getLong("control-seq", 0);
         if (cursor < sequence && saved.contains("controls")) return;
         if (cursor != sequence) saved.edit().putLong("control-seq", cursor).apply();
-        showTimer(context, state);
+        long endAt = state.optLong("endAt");
+        if ("running".equals(state.optString("status")) && state.optBoolean("countdown")
+                && endAt > 0 && endAt <= System.currentTimeMillis()) {
+            handleDeadline(context, state, state.optString("id"), endAt, null);
+        } else showTimer(context, state);
     }
 
     private static JSONObject readTimer(Context context) {
@@ -129,6 +143,8 @@ final class TimerAlerts {
         updateFloating(context);
     }
 
+    static boolean isAppVisible() { return appVisible; }
+
     private static void updateFloating(Context context) {
         if (appVisible || latestTimer == null) FloatingTimer.hide(context);
         else FloatingTimer.update(context, latestTimer, openApp(context));
@@ -160,30 +176,35 @@ final class TimerAlerts {
         saved.edit().remove("scheduled-id").apply();
     }
 
-    static void onTimerDue(Context context, Intent intent) {
-        SharedPreferences saved = preferences(context);
-        String id = intent.getStringExtra("id");
-        long endAt = intent.getLongExtra("end", 0);
-        if (id == null || !id.equals(saved.getString("scheduled-id", "")) || endAt != saved.getLong("scheduled-end", 0)) return;
-        saved.edit().remove("scheduled-id").apply();
-        if (endAt > System.currentTimeMillis()) {
-            schedule(context, id, endAt);
-            return;
+    static void onTimerDue(Context context, Intent intent, Runnable finish) {
+        boolean playing = false;
+        try {
+            SharedPreferences saved = preferences(context);
+            String id = intent.getStringExtra("id");
+            long endAt = intent.getLongExtra("end", 0);
+            if (id == null || !id.equals(saved.getString("scheduled-id", "")) || endAt != saved.getLong("scheduled-end", 0)) return;
+            saved.edit().remove("scheduled-id").apply();
+            if (endAt > System.currentTimeMillis()) {
+                schedule(context, id, endAt);
+                return;
+            }
+            playing = handleDeadline(context, readTimer(context), id, endAt, finish);
+        } finally {
+            if (!playing) finish.run();
         }
-        handleDeadline(context, readTimer(context), id, endAt);
     }
 
-    private static void handleDeadline(Context context, JSONObject state, String id, long endAt) {
-        if (!id.equals(state.optString("id")) || !"running".equals(state.optString("status")) || endAt != state.optLong("endAt")) return;
+    private static boolean handleDeadline(Context context, JSONObject state, String id, long endAt, Runnable finish) {
+        if (!id.equals(state.optString("id")) || !"running".equals(state.optString("status")) || endAt != state.optLong("endAt")) return false;
         boolean rest = state.optBoolean("rest");
         boolean sound = state.optBoolean("sound", true);
+        boolean chime = !rest && !"alarm".equals(state.optString("focusAlert")) && sound;
         try {
             if (rest || "alarm".equals(state.optString("focusAlert"))) {
                 state.put("status", "waiting");
                 showTimer(context, state);
                 ring(context, id, endAt + 180_000L, sound, state.optBoolean("english"), !rest);
             } else {
-                if (sound) chime(context, id, endAt);
                 if ("rest".equals(state.optString("focusAfter"))) {
                     long duration = state.optLong("nextBreakDuration", 300_000);
                     long breakEnd = endAt + duration;
@@ -191,7 +212,7 @@ final class TimerAlerts {
                     state.put("id", breakId).put("rest", true).put("duration", duration).put("remaining", duration)
                         .put("endAt", breakEnd).put("when", breakEnd).put("title", state.optString("nextBreakTitle"));
                     showTimer(context, state);
-                    if (breakEnd <= System.currentTimeMillis()) handleDeadline(context, state, breakId, breakEnd);
+                    if (breakEnd <= System.currentTimeMillis()) handleDeadline(context, state, breakId, breakEnd, null);
                 } else {
                     long duration = state.optLong("duration");
                     state.put("countdown", false).put("endAt", 0).put("when", endAt - duration)
@@ -200,6 +221,7 @@ final class TimerAlerts {
                 }
             }
         } catch (JSONException ignored) {}
+        return chime && chime(context, id, endAt, finish);
     }
 
     static void control(Context context, Intent intent) {
@@ -215,7 +237,7 @@ final class TimerAlerts {
         long endAt = state.optLong("endAt");
         boolean countdown = state.optBoolean("countdown");
         if (pause && countdown && endAt <= now) {
-            handleDeadline(context, state, id, endAt);
+            handleDeadline(context, state, id, endAt, null);
             return;
         }
         try {
@@ -235,16 +257,34 @@ final class TimerAlerts {
     }
 
     static void chime(Context context, String id, long dueAt) {
+        chime(context, id, dueAt, null);
+    }
+
+    private static boolean chime(Context context, String id, long dueAt, Runnable finish) {
         SharedPreferences saved = preferences(context);
-        if (id == null || id.isEmpty() || id.equals(saved.getString("last-chime", "")) || System.currentTimeMillis() - dueAt > 3000) return;
-        saved.edit().putString("last-chime", id).apply();
-        AudioAttributes attributes = new AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_NOTIFICATION)
+        if (id == null || id.isEmpty() || id.equals(saved.getString("last-chime", "")) || System.currentTimeMillis() - dueAt > CHIME_GRACE) return false;
+        AudioAttributes attributes = new AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_ALARM)
             .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION).build();
         MediaPlayer player = MediaPlayer.create(context, R.raw.focus_chime, attributes, 0);
-        if (player == null) return;
-        player.setOnCompletionListener(MediaPlayer::release);
-        player.setOnErrorListener((error, what, extra) -> { error.release(); return true; });
-        try { player.start(); } catch (IllegalStateException unavailable) { player.release(); }
+        if (player == null) return false;
+        Handler handler = new Handler(Looper.getMainLooper());
+        Runnable release = () -> {
+            handler.removeCallbacksAndMessages(null);
+            player.release();
+            if (finish != null) finish.run();
+        };
+        player.setOnCompletionListener(completed -> release.run());
+        player.setOnErrorListener((error, what, extra) -> { release.run(); return true; });
+        try {
+            player.setWakeMode(context, PowerManager.PARTIAL_WAKE_LOCK);
+            player.start();
+            saved.edit().putString("last-chime", id).apply();
+            handler.postDelayed(release, 4000);
+            return true;
+        } catch (IllegalStateException unavailable) {
+            player.release();
+            return false;
+        }
     }
 
     static void ring(Context context, String id, long until, boolean sound, boolean english, boolean focus) {
@@ -259,13 +299,18 @@ final class TimerAlerts {
         try {
             context.startForegroundService(start);
         } catch (IllegalStateException | SecurityException unavailable) {
-            notifications(context).notify(ALARM_NOTIFICATION, alarmNotification(context, id, english, focus));
+            String channel = sound ? FALLBACK_ALARM_CHANNEL : ALARM_CHANNEL;
+            notifications(context).notify(ALARM_NOTIFICATION, alarmNotification(context, id, english, focus, channel));
         }
     }
 
     static Notification alarmNotification(Context context, String id, boolean english, boolean focus) {
+        return alarmNotification(context, id, english, focus, ALARM_CHANNEL);
+    }
+
+    private static Notification alarmNotification(Context context, String id, boolean english, boolean focus, String channel) {
         Intent dismiss = new Intent(context, TimerReceiver.class).setAction(DISMISS).putExtra("id", id);
-        return new Notification.Builder(context, ALARM_CHANNEL)
+        return new Notification.Builder(context, channel)
             .setSmallIcon(R.drawable.ic_timer_status)
             .setContentTitle(focus ? (english ? "Focus goal reached" : "专注时间到") : (english ? "Break over" : "休息结束"))
             .setContentText(focus ? (english ? "Open Yike to choose what’s next" : "打开一刻选择下一步") : (english ? "Tap to see the alarm" : "点击查看闹钟"))

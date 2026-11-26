@@ -256,6 +256,7 @@
     [data-view="report"] .task-pane { display: none; }
     .task-heading { display: flex; justify-content: space-between; align-items: center; gap: 6px; padding-left: 6px; margin-bottom: 11px; }
     .task-heading h2 { font-size: 14px; }
+    .task-heading-actions { display: flex; gap: 5px; }
     .task-count { font-size: 13px; font-weight: 650; color: var(--muted); margin-left: 6px; }
     .icon-button, .text-button, .soft-button {
       display: inline-flex; justify-content: center; align-items: center; gap: 8px;
@@ -281,7 +282,59 @@
     .selected .task-indicator { border: 4px solid var(--accent); }
     .task-title { display: block; font-size: 13px; font-weight: 750; overflow-wrap: anywhere; }
     .task-note { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; margin-top: 4px; font-size: 12px; line-height: 1.5; color: var(--muted); overflow-wrap: anywhere; white-space: pre-line; }
-    .task-edit { margin: 0 5px 0 3px; border-color: transparent; background: transparent; color: var(--muted); }
+    .task-edit { margin-right: 3px; border-color: transparent; background: transparent; color: var(--muted); }
+    .task-folder { min-width: 0; }
+    .folder-row {
+      display: flex; align-items: center; gap: 2px; min-height: 43px; padding: 2px 4px;
+      border: 1px solid var(--outline); border-radius: 14px; background: var(--soft);
+    }
+    .folder-row .icon-button { border-color: transparent; background: transparent; }
+    .folder-name {
+      flex: 1; min-width: 0; border: 0; border-radius: 8px; background: transparent;
+      display: flex; align-items: center; gap: 6px; padding: 8px 2px; text-align: left;
+      font-size: 13px; font-weight: 750; overflow-wrap: anywhere;
+    }
+    .folder-name:hover { background: var(--softer); }
+    .folder-name .ico { flex-shrink: 0; }
+    .folder-row [aria-expanded="true"] .folder-chevron { transform: rotate(90deg); }
+    .folder-chevron { transition: transform .2s var(--ease); }
+    .folder-contents { display: grid; grid-template-rows: 1fr; transition: grid-template-rows .23s var(--ease); }
+    .folder-contents[inert] { grid-template-rows: 0fr; }
+    .folder-clip { min-height: 0; overflow: clip; }
+    .folder-tasks { margin: 4px 1px 3px 9px; padding: 3px 3px 3px 7px; border-left: 1px solid var(--outline); gap: 6px; }
+    .folder-tasks:empty { display: none; }
+    .task-grip { color: var(--muted); cursor: grab; touch-action: none; user-select: none; }
+    .task-grip.icon-button { width: 27px; border-color: transparent; background: transparent; }
+    .task-grip:active { cursor: grabbing; }
+    .task-grip .ico { width: 10px; height: 15px; opacity: .72; }
+    [data-sort-id] { position: relative; }
+    [data-sort-id][data-dragging] { opacity: .55; }
+    [data-drop="inside"] { border-color: var(--accent); background: var(--soft); }
+    [data-drop="before"]::after, [data-drop="after"]::after {
+      content: ""; position: absolute; z-index: 1; left: 3px; right: 3px; height: 3px;
+      border-radius: 4px; background: var(--accent); pointer-events: none;
+    }
+    [data-drop="before"]::after { top: -5px; }
+    [data-drop="after"]::after { bottom: -5px; }
+    .task-drop-end {
+      border: 1px dashed var(--outline); border-radius: 12px; padding: 8px;
+      color: var(--muted); text-align: center; font-size: 12px;
+    }
+    .task-drop-end[data-drop] { border-color: var(--accent); color: var(--ink); background: var(--soft); }
+    .task-ghost {
+      position: fixed; top: 0; left: 0; z-index: 35; pointer-events: none; max-width: min(220px, 69vw);
+      padding: 9px 13px; border-radius: 12px; background: var(--accent); color: var(--button-ink);
+      overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font-size: 13px; font-weight: 750;
+      box-shadow: 0 6px 18px var(--deep);
+    }
+    .folder-icon::before { content: ""; position: absolute; inset: 4px 0 1px; border: 1.5px solid currentColor; border-radius: 3px; }
+    .folder-icon::after { content: ""; position: absolute; top: 2px; left: 1px; width: 6px; height: 3px; border: 1.5px solid currentColor; border-bottom: 0; border-radius: 2px 2px 0 0; }
+    .folder-chevron::before { content: ""; position: absolute; width: 5px; height: 5px; top: 4px; left: 3px; border-right: 1.7px solid currentColor; border-top: 1.7px solid currentColor; transform: rotate(45deg); }
+    .grip-icon { background: radial-gradient(circle, currentColor 1.1px, transparent 1.5px) 0 0 / 5px 5px; }
+    @media (pointer: coarse) {
+      .folder-row .icon-button, .task-grip.icon-button { min-height: 42px; }
+      .task-grip.icon-button { width: 33px; }
+    }
     .task-empty {
       display: grid; justify-items: start; gap: 6px; width: 100%; padding: 14px 13px;
       border: 1px dashed #fff6ef69; background: var(--softer); border-radius: 15px; text-align: left;
@@ -751,7 +804,7 @@
       .task-heading h2 { font-size: 13px; }
       .task-empty { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; padding: 10px; }
       .sidebar-footer { padding: 0; font-size: 10px; }
-      .tasks { padding: 3px; margin: -3px; }
+      .task-pane > .tasks { padding: 3px; margin: -3px; }
       #toggle-sidebar .sidebar-icon { border: 0; }
       #toggle-sidebar .sidebar-icon::after { top: 7px; bottom: auto; left: 1px; width: 16px; height: 1.5px; border-radius: 2px; box-shadow: 0 -5px, 0 5px; }
       main { padding: 18px 14px 22px; }
@@ -832,7 +885,10 @@
         <section class="task-pane" aria-labelledby="tasks-heading">
           <div class="task-heading">
             <h2 id="tasks-heading">我的任务 <span class="task-count" id="task-count">0</span></h2>
-            <button type="button" class="icon-button small" id="add-task" aria-label="新建任务" title="新建任务"><i class="ico plus" aria-hidden="true"></i></button>
+            <div class="task-heading-actions">
+              <button type="button" class="icon-button small" id="add-folder" aria-label="新建文件夹" title="新建文件夹"><i class="ico folder-icon" aria-hidden="true"></i></button>
+              <button type="button" class="icon-button small" id="add-task" aria-label="新建任务" title="新建任务"><i class="ico plus" aria-hidden="true"></i></button>
+            </div>
           </div>
           <ul class="tasks" id="tasks"></ul>
           <button type="button" class="task-empty" id="first-task"><strong>＋ 添加第一个任务</strong><span>给任务起个名字，写下要做的事。</span></button>
@@ -974,7 +1030,15 @@
       <div class="dialog-header"><h2 id="task-dialog-title">新建任务</h2><button type="button" class="icon-button small" data-close aria-label="关闭"><i class="ico close" aria-hidden="true"></i></button></div>
       <label class="field">任务名称 <input id="task-name" maxlength="60" required placeholder="例如：写完文章开头" autocomplete="off" autofocus></label>
       <label class="field">备注 <small>选填，最多 240 字</small><textarea id="task-note" maxlength="240" placeholder="写下这一轮想完成的具体事项"></textarea></label>
+      <label class="field" id="task-folder-field" hidden>文件夹 <select id="task-folder"></select></label>
       <div class="dialog-actions"><button type="button" class="soft-button delete-button" id="delete-task" hidden>删除任务</button><button type="button" class="soft-button" data-close>取消</button><button type="submit" class="primary">保存任务</button></div>
+    </form>
+  </dialog>
+  <dialog id="folder-dialog" aria-labelledby="folder-dialog-title">
+    <form id="folder-form">
+      <div class="dialog-header"><h2 id="folder-dialog-title">新建文件夹</h2><button type="button" class="icon-button small" data-close aria-label="关闭"><i class="ico close" aria-hidden="true"></i></button></div>
+      <label class="field">文件夹名称 <input id="folder-name" maxlength="60" required autocomplete="off" autofocus></label>
+      <div class="dialog-actions"><button type="button" class="soft-button delete-button" id="remove-folder" hidden>解散文件夹</button><button type="button" class="soft-button" data-close>取消</button><button type="submit" class="primary">保存文件夹</button></div>
     </form>
   </dialog>
   <dialog id="delete-task-dialog" aria-labelledby="delete-task-title" aria-describedby="delete-task-detail">
@@ -1073,6 +1137,8 @@
       '一刻': 'Yike', '番茄钟': 'Focus timer', '工作台侧栏': 'Workspace sidebar',
       '收起导航': 'Close navigation', '主导航': 'Main navigation', '任务': 'Tasks', '报告': 'Reports',
       '我的任务': 'My tasks', '新建任务': 'New task', '＋ 添加第一个任务': '+ Add your first task',
+      '新建文件夹': 'New folder', '文件夹': 'Folder', '文件夹名称': 'Folder name',
+      '解散文件夹': 'Ungroup', '保存文件夹': 'Save folder',
       '给任务起个名字，写下要做的事。': 'Name the task and add a note.',
       '倒计时': 'Countdown', '正向计时': 'Count up', '专注报告': 'Focus report',
       '设置': 'Settings', '番茄计时器': 'Focus timer', '计时模式': 'Timer modes', '专注': 'Focus',
@@ -1137,6 +1203,8 @@
     let chartTransition;
     let editingTimer;
     let editingId = null;
+    let editingFolderId = null;
+    let taskDrag;
     let pendingAction = null;
     let audioContext;
     let startClickBuffer;
@@ -1151,6 +1219,9 @@
     let suppressHoldClick = false;
     let lastRingBeat = -1;
     let breakAudioGain;
+    let backgroundSound;
+    let ringBuffer;
+    let pendingChime;
 
     const tr = (zh, en) => english ? en : zh;
     const countLabel = (count, unit) => `${count} ${unit}${count === 1 ? '' : 's'}`;
@@ -1195,12 +1266,15 @@
         if (saved?.version === 1 || saved?.version === 2) {
           const settings = { ...defaultSettings, ...saved.settings };
           settings.buttonSound = saved.settings?.buttonSound ?? settings.sound;
-          return { ...saved, version: 2, settings, timer: { kind: 'countdown', ...saved.timer } };
+          const folders = saved.folders ?? [];
+          const ids = new Set([...saved.tasks, ...folders].map(({ id }) => id));
+          const order = [...new Set([...(saved.taskOrder ?? []).filter((id) => ids.has(id)), ...ids])];
+          return { ...saved, version: 2, folders, taskOrder: order, settings, timer: { kind: 'countdown', ...saved.timer } };
         }
       } catch {
         canSave = false;
       }
-      return { version: 2, settings: { ...defaultSettings }, tasks: [], records: [], selectedId: null, cycle: 0, timer: idleTimer('focus', defaultSettings) };
+      return { version: 2, settings: { ...defaultSettings }, tasks: [], folders: [], taskOrder: [], records: [], selectedId: null, cycle: 0, timer: idleTimer('focus', defaultSettings) };
     }
 
     function saveState() {
@@ -1216,6 +1290,7 @@
         ? tr(android ? '记录保存在此手机' : '记录保存在此浏览器', android ? 'Saved on this device' : 'Saved in this browser')
         : tr('暂时无法保存记录，请保持页面开启', 'Unable to save. Keep this page open.');
       syncNativeTimer();
+      syncBackgroundSound();
     }
 
     function syncNativeTimer() {
@@ -1287,34 +1362,183 @@
       return node;
     }
 
+    function taskIcon(icon) {
+      const node = element('i', `ico ${icon}`);
+      node.setAttribute('aria-hidden', 'true');
+      return node;
+    }
+
+    function taskButton(icon, label) {
+      const button = element('button', 'icon-button small');
+      button.type = 'button';
+      button.setAttribute('aria-label', label);
+      button.title = label;
+      button.append(taskIcon(icon));
+      return button;
+    }
+
+    function taskGrip(name) {
+      const button = taskButton('grip-icon', tr(`移动 ${name}`, `Move ${name}`));
+      button.classList.add('task-grip');
+      button.title = tr('拖动排序 · Alt + ↑ / ↓', 'Drag to reorder · Alt + ↑ / ↓');
+      button.setAttribute('aria-keyshortcuts', 'Alt+ArrowUp Alt+ArrowDown');
+      return button;
+    }
+
+    function buildTaskRow(task) {
+      const row = element('li', 'task-row');
+      row.dataset.sortId = task.id;
+      const select = element('button', 'task-select');
+      select.type = 'button';
+      select.dataset.selectTask = task.id;
+      const indicator = element('span', 'task-indicator');
+      indicator.setAttribute('aria-hidden', 'true');
+      const labels = element('span');
+      labels.append(element('span', 'task-title', task.name));
+      if (task.note) labels.append(element('span', 'task-note', task.note));
+      select.append(indicator, labels);
+      const edit = taskButton('edit', tr(`编辑 ${task.name}`, `Edit ${task.name}`));
+      edit.classList.add('task-edit');
+      edit.dataset.editTask = task.id;
+      row.append(select, edit, taskGrip(task.name));
+      return row;
+    }
+
+    function syncFolder(folder, row, contents) {
+      const toggle = row.querySelector('[data-toggle-folder]');
+      const label = folder.collapsed
+        ? tr(`展开 ${folder.name}`, `Expand ${folder.name}`)
+        : tr(`折叠 ${folder.name}`, `Collapse ${folder.name}`);
+      toggle.setAttribute('aria-expanded', !folder.collapsed);
+      toggle.setAttribute('aria-label', label);
+      toggle.title = label;
+      contents.inert = Boolean(folder.collapsed);
+    }
+
+    function buildFolder(folder) {
+      const section = element('li', 'task-folder');
+      const row = element('div', 'folder-row');
+      row.dataset.sortId = folder.id;
+      row.dataset.folderRow = '';
+      const toggle = taskButton('folder-chevron', '');
+      toggle.dataset.toggleFolder = folder.id;
+      toggle.setAttribute('aria-controls', `folder-${folder.id}`);
+      const title = element('button', 'folder-name');
+      title.type = 'button';
+      title.dataset.editFolder = folder.id;
+      title.title = tr('编辑文件夹', 'Edit folder');
+      title.append(taskIcon('folder-icon'), element('span', '', folder.name));
+      const add = taskButton('plus', tr(`在 ${folder.name} 新建任务`, `Add a task to ${folder.name}`));
+      add.dataset.folderAdd = folder.id;
+      row.append(toggle, title, taskGrip(folder.name), add);
+      const contents = element('div', 'folder-contents');
+      contents.id = `folder-${folder.id}`;
+      const clip = element('div', 'folder-clip');
+      const list = element('ul', 'tasks folder-tasks');
+      list.dataset.folderList = folder.id;
+      clip.append(list);
+      contents.append(clip);
+      section.append(row, contents);
+      syncFolder(folder, row, contents);
+      return { section, list };
+    }
+
     function renderTasks() {
+      cancelTaskDrag();
       const list = byId('tasks');
+      const tasks = new Map(state.tasks.map((task) => [task.id, task]));
+      const folders = new Map(state.folders.map((folder) => [folder.id, buildFolder(folder)]));
       list.replaceChildren();
       byId('task-count').textContent = state.tasks.length;
       byId('first-task').hidden = state.tasks.length > 0;
-      for (const task of state.tasks) {
-        const row = element('li', 'task-row');
-        const select = element('button', 'task-select');
-        select.type = 'button';
-        select.dataset.selectTask = task.id;
-        const indicator = element('span', 'task-indicator');
-        indicator.setAttribute('aria-hidden', 'true');
-        const labels = element('span');
-        labels.append(element('span', 'task-title', task.name));
-        if (task.note) labels.append(element('span', 'task-note', task.note));
-        select.append(indicator, labels);
-        const edit = element('button', 'icon-button small task-edit');
-        edit.type = 'button';
-        edit.dataset.editTask = task.id;
-        edit.setAttribute('aria-label', tr(`编辑 ${task.name}`, `Edit ${task.name}`));
-        edit.title = tr('编辑任务', 'Edit task');
-        const editIcon = element('i', 'ico edit');
-        editIcon.setAttribute('aria-hidden', 'true');
-        edit.append(editIcon);
-        row.append(select, edit);
-        list.append(row);
+      for (const id of state.taskOrder) {
+        const folder = folders.get(id);
+        const task = tasks.get(id);
+        if (folder) list.append(folder.section);
+        else if (task) (folders.get(task.folderId)?.list ?? list).append(buildTaskRow(task));
       }
       renderSelection();
+    }
+
+    function createTask(name, note, folderId = null) {
+      const task = { id: newId(), name, note, folderId };
+      state.tasks.push(task);
+      state.taskOrder.push(task.id);
+      return task;
+    }
+
+    function finishTaskMove(id, { folderId, anchorId, side }) {
+      const task = state.tasks.find((item) => item.id === id);
+      if (task) {
+        task.folderId = folderId;
+        const folder = state.folders.find((item) => item.id === folderId);
+        if (folder) folder.collapsed = false;
+      }
+      state.taskOrder = state.taskOrder.filter((itemId) => itemId !== id);
+      const index = anchorId ? state.taskOrder.indexOf(anchorId) + Number(side === 'after') : state.taskOrder.length;
+      state.taskOrder.splice(index, 0, id);
+      saveState();
+      renderTasks();
+      byId('tasks').querySelector(`[data-sort-id="${CSS.escape(id)}"] .task-grip`)?.focus({ preventScroll: true });
+    }
+
+    function taskDropTarget(drag, x, y) {
+      const hit = document.elementFromPoint(x, y);
+      const list = byId('tasks');
+      if (!list.contains(hit)) return null;
+      const rootEnd = hit.closest('.task-drop-end');
+      if (rootEnd) return { marker: rootEnd, folderId: null, side: 'inside' };
+      let row = hit.closest('[data-sort-id]');
+      const folder = hit.closest('.task-folder');
+      if (drag.isFolder && folder) row = folder.firstElementChild;
+      if (!row && folder) {
+        return { marker: folder.firstElementChild, folderId: folder.firstElementChild.dataset.sortId, side: 'inside' };
+      }
+      if (!row || row === drag.row) return null;
+      const bounds = row.getBoundingClientRect();
+      const relative = (y - bounds.top) / bounds.height;
+      const anchorId = row.dataset.sortId;
+      if (!drag.isFolder && row.hasAttribute('data-folder-row') && relative >= .24 && relative <= .76) {
+        return { marker: row, folderId: anchorId, side: 'inside' };
+      }
+      return { marker: row, folderId: row.parentElement.dataset.folderList ?? null, anchorId, side: relative < .5 ? 'before' : 'after' };
+    }
+
+    function updateTaskDrag(drag) {
+      const { x, y } = drag;
+      drag.ghost.style.transform = `translate(${x + 13}px, ${y + 10}px)`;
+      drag.target?.marker.removeAttribute('data-drop');
+      drag.target = taskDropTarget(drag, x, y);
+      if (drag.target) drag.target.marker.dataset.drop = drag.target.side;
+    }
+
+    function scrollTaskDrag() {
+      const drag = taskDrag;
+      if (!drag?.ghost) return;
+      const scroll = byId('sidebar').firstElementChild;
+      const bounds = scroll.getBoundingClientRect();
+      if (drag.x >= bounds.left && drag.x <= bounds.right) {
+        const edge = 38;
+        const speed = drag.y < bounds.top + edge ? -8 : drag.y > bounds.bottom - edge ? 8 : 0;
+        if (speed) {
+          const before = scroll.scrollTop;
+          scroll.scrollTop += speed;
+          if (scroll.scrollTop !== before) updateTaskDrag(drag);
+        }
+      }
+      drag.frame = requestAnimationFrame(scrollTaskDrag);
+    }
+
+    function cancelTaskDrag() {
+      if (!taskDrag) return;
+      const drag = taskDrag;
+      taskDrag = undefined;
+      cancelAnimationFrame(drag.frame);
+      drag.target?.marker.removeAttribute('data-drop');
+      drag.row.removeAttribute('data-dragging');
+      drag.ghost?.remove();
+      drag.end?.remove();
+      if (drag.grip.hasPointerCapture(drag.pointerId)) drag.grip.releasePointerCapture(drag.pointerId);
     }
 
     function renderSelection() {
@@ -1542,7 +1766,14 @@
     function unlockAudio() {
       if (!window.AudioContext) return;
       try {
-        audioContext ??= new AudioContext();
+        if (!audioContext) {
+          audioContext = new AudioContext();
+          audioContext.addEventListener('statechange', () => {
+            if (audioContext.state !== 'running') return;
+            flushChime();
+            refresh();
+          });
+        }
         if (audioContext.state !== 'running') audioContext.resume().catch(() => {});
         return audioContext;
       } catch {
@@ -1599,6 +1830,78 @@
       });
     }
 
+    function playChimeAt(start) {
+      const tone = audioContext.createOscillator();
+      const gain = audioContext.createGain();
+      tone.frequency.value = 880;
+      gain.gain.setValueAtTime(.0001, start);
+      gain.gain.exponentialRampToValueAtTime(.17, start + .014);
+      gain.gain.exponentialRampToValueAtTime(.0001, start + .34);
+      tone.connect(gain).connect(audioContext.destination);
+      tone.start(start);
+      tone.stop(start + .35);
+      tone.onended = () => gain.disconnect();
+      return tone;
+    }
+
+    function makeRingBuffer() {
+      const rate = audioContext.sampleRate;
+      const buffer = audioContext.createBuffer(1, Math.round(rate * 1.9), rate);
+      const samples = buffer.getChannelData(0);
+      [659, 880, 988].forEach((frequency, index) => {
+        const offset = Math.round(rate * index * .16);
+        for (let sample = 0; sample < .4 * rate; sample++) {
+          const t = sample / rate;
+          const envelope = .14 * Math.min(t / .025, 1) * Math.exp(-19 * Math.max(0, t - .025));
+          samples[offset + sample] += Math.sin(2 * Math.PI * frequency * t) * envelope;
+        }
+      });
+      return buffer;
+    }
+
+    function stopBackgroundSound() {
+      if (!backgroundSound) return;
+      backgroundSound.source.stop();
+      backgroundSound = undefined;
+    }
+
+    function syncBackgroundSound(now = Date.now()) {
+      if (nativeTimer) return;
+      const timer = state.timer;
+      const alert = state.breakAlert;
+      const dueAt = alert ? alert.ringUntil - BREAK_RING_TIME : timer.status === 'running' ? timer.endAt : null;
+      const id = alert?.id ?? timer.id;
+      const ring = Boolean(alert) || timer.mode !== 'focus' || state.settings.focusAlert === 'alarm';
+      const eligible = document.hidden && state.settings.sound && audioContext?.state === 'running'
+        && id && dueAt !== null && (ring ? now < dueAt + BREAK_RING_TIME : now < dueAt);
+      if (eligible && backgroundSound?.id === id && backgroundSound.dueAt === dueAt && backgroundSound.ring === ring) return;
+      stopBackgroundSound();
+      if (!eligible) return;
+      const at = audioContext.currentTime + Math.max(0, dueAt - now) / 1000;
+      let source;
+      if (ring) {
+        source = audioContext.createBufferSource();
+        source.buffer = ringBuffer ??= makeRingBuffer();
+        source.loop = true;
+        source.connect(audioContext.destination);
+        source.start(at, (Math.max(0, now - dueAt) % 1900) / 1000);
+        source.stop(at + (dueAt + BREAK_RING_TIME - Math.max(dueAt, now)) / 1000);
+      } else {
+        source = playChimeAt(at);
+      }
+      backgroundSound = { id, dueAt, ring, at, source };
+    }
+
+    function flushChime(now = Date.now()) {
+      if (pendingChime === undefined) return;
+      if (!state.settings.sound || now - pendingChime > MINUTE) {
+        pendingChime = undefined;
+      } else if (audioContext?.state === 'running') {
+        pendingChime = undefined;
+        playChimeAt(audioContext.currentTime);
+      }
+    }
+
     function hideCompletion() {
       clearTimeout(completionTimeout);
       byId('dial-completion').hidden = true;
@@ -1646,7 +1949,8 @@
       const beat = Math.floor(elapsed / 1900);
       if (nativeTimer || !ringing || beat === lastRingBeat) return;
       lastRingBeat = beat;
-      if (state.settings.sound && audioContext?.state === 'running') {
+      const alreadyRinging = document.hidden && backgroundSound?.ring && backgroundSound.id === alert.id;
+      if (!alreadyRinging && state.settings.sound && audioContext?.state === 'running') {
         if (!breakAudioGain) {
           breakAudioGain = audioContext.createGain();
           breakAudioGain.connect(audioContext.destination);
@@ -1674,19 +1978,18 @@
       if (!state.settings.sound) return;
       if (nativeTimer?.chimeFocus) {
         nativeTimer.chimeFocus(id, dueAt);
-      } else if (audioContext?.state === 'running' && Date.now() - dueAt < 3000) {
-        const tone = audioContext.createOscillator();
-        const gain = audioContext.createGain();
-        const start = audioContext.currentTime;
-        tone.frequency.value = 880;
-        gain.gain.setValueAtTime(.0001, start);
-        gain.gain.exponentialRampToValueAtTime(.17, start + .014);
-        gain.gain.exponentialRampToValueAtTime(.0001, start + .34);
-        tone.connect(gain).connect(audioContext.destination);
-        tone.start(start);
-        tone.stop(start + .35);
-        tone.onended = () => gain.disconnect();
+        return;
       }
+      if (backgroundSound?.id === id && !backgroundSound.ring) {
+        const played = audioContext.currentTime >= backgroundSound.at - .12;
+        if (played) {
+          backgroundSound = undefined; // Let the prescheduled note finish.
+          return;
+        }
+        stopBackgroundSound();
+      }
+      pendingChime = dueAt;
+      flushChime();
     }
 
     function continueAfterCountdown(resumedAt) {
@@ -1959,14 +2262,29 @@
       byId('confirm-dialog').showModal();
     }
 
-    function openTaskEditor(task) {
+    function openTaskEditor(task, folderId = task?.folderId ?? null) {
       editingId = task?.id ?? null;
       byId('task-dialog-title').textContent = task ? tr('编辑任务', 'Edit task') : tr('新建任务', 'New task');
       byId('delete-task').hidden = !task;
       byId('task-name').value = task?.name ?? '';
       byId('task-name').setCustomValidity('');
       byId('task-note').value = task?.note ?? '';
+      const folderSelect = byId('task-folder');
+      folderSelect.replaceChildren(new Option(tr('未分类', 'Unfiled'), ''));
+      for (const folder of state.folders) folderSelect.add(new Option(folder.name, folder.id));
+      folderSelect.value = state.folders.some((folder) => folder.id === folderId) ? folderId : '';
+      byId('task-folder-field').hidden = !state.folders.length;
       byId('task-dialog').showModal();
+    }
+
+    function openFolderEditor(folder) {
+      editingFolderId = folder?.id ?? null;
+      byId('folder-dialog-title').textContent = folder ? tr('编辑文件夹', 'Edit folder') : tr('新建文件夹', 'New folder');
+      byId('remove-folder').hidden = !folder;
+      const input = byId('folder-name');
+      input.value = folder?.name ?? '';
+      input.setCustomValidity('');
+      byId('folder-dialog').showModal();
     }
 
     function deleteEditedTask() {
@@ -1979,6 +2297,7 @@
       }
       settleTimer();
       const [task] = state.tasks.splice(index, 1);
+      state.taskOrder = state.taskOrder.filter((id) => id !== task.id);
       playButtonClick(true);
       for (const record of state.records) {
         if (record.taskId === task.id && record.taskName !== task.name) record.reportTaskName = task.name;
@@ -2620,8 +2939,7 @@
           input.reportValidity();
           return;
         }
-        task = { id: newId(), name, note: '' };
-        state.tasks.push(task);
+        task = createTask(name, '');
       }
       const wasAssigned = Boolean(record.taskId || record.taskName);
       record.taskId = task?.id ?? null;
@@ -2677,11 +2995,123 @@
     byId('previous-period').addEventListener('click', () => { reportOffset -= 1; renderReport(); });
     byId('next-period').addEventListener('click', () => { reportOffset = Math.min(0, reportOffset + 1); renderReport(); });
     for (const id of ['first-task', 'add-task']) byId(id).addEventListener('click', () => openTaskEditor());
+    byId('add-folder').addEventListener('click', () => openFolderEditor());
     byId('tasks').addEventListener('click', (event) => {
       const select = event.target.closest('[data-select-task]');
       if (select) chooseTask(select.dataset.selectTask);
       const edit = event.target.closest('[data-edit-task]');
       if (edit) openTaskEditor(state.tasks.find((task) => task.id === edit.dataset.editTask));
+      const folderButton = event.target.closest('[data-toggle-folder], [data-edit-folder], [data-folder-add]');
+      if (!folderButton) return;
+      const { toggleFolder, editFolder, folderAdd } = folderButton.dataset;
+      const folder = state.folders.find((item) => item.id === (toggleFolder ?? editFolder ?? folderAdd));
+      if (!folder) return;
+      if (editFolder) openFolderEditor(folder);
+      else if (folderAdd) openTaskEditor(undefined, folder.id);
+      else {
+        folder.collapsed = !folder.collapsed;
+        syncFolder(folder, folderButton.parentElement, byId(`folder-${folder.id}`));
+        saveState();
+      }
+    });
+    byId('tasks').addEventListener('pointerdown', (event) => {
+      const grip = event.target.closest('.task-grip');
+      if (!grip || !event.isPrimary || event.button !== 0 || taskDrag) return;
+      const row = grip.closest('[data-sort-id]');
+      taskDrag = {
+        grip, row, isFolder: row.hasAttribute('data-folder-row'), pointerId: event.pointerId,
+        x: event.clientX, y: event.clientY, startX: event.clientX, startY: event.clientY
+      };
+      grip.setPointerCapture(event.pointerId);
+    });
+    byId('tasks').addEventListener('pointermove', (event) => {
+      const drag = taskDrag;
+      if (!drag || drag.pointerId !== event.pointerId) return;
+      drag.x = event.clientX;
+      drag.y = event.clientY;
+      if (!drag.ghost) {
+        if (Math.hypot(drag.x - drag.startX, drag.y - drag.startY) < 6) return;
+        const name = drag.row.querySelector('.task-title, .folder-name span').textContent;
+        drag.ghost = element('div', 'task-ghost', name);
+        drag.ghost.setAttribute('aria-hidden', 'true');
+        document.body.append(drag.ghost);
+        drag.end = element('li', 'task-drop-end', tr('拖到列表末尾', 'Drop at the end of the list'));
+        drag.end.setAttribute('aria-hidden', 'true');
+        byId('tasks').append(drag.end);
+        drag.row.dataset.dragging = '';
+        drag.frame = requestAnimationFrame(scrollTaskDrag);
+      }
+      updateTaskDrag(drag);
+    });
+    byId('tasks').addEventListener('pointerup', (event) => {
+      const drag = taskDrag;
+      if (!drag || drag.pointerId !== event.pointerId) return;
+      const moved = Math.hypot(event.clientX - drag.startX, event.clientY - drag.startY) >= 6;
+      const target = (drag.ghost || moved) && taskDropTarget(drag, event.clientX, event.clientY);
+      cancelTaskDrag();
+      if (target) finishTaskMove(drag.row.dataset.sortId, target);
+    });
+    for (const type of ['pointercancel', 'lostpointercapture']) {
+      byId('tasks').addEventListener(type, (event) => {
+        if (taskDrag?.pointerId === event.pointerId) cancelTaskDrag();
+      });
+    }
+    byId('tasks').addEventListener('keydown', (event) => {
+      if (event.key === 'Escape' && taskDrag) {
+        cancelTaskDrag();
+        event.stopPropagation();
+        return;
+      }
+      const grip = event.target.closest('.task-grip');
+      if (!grip || !event.altKey || !['ArrowUp', 'ArrowDown'].includes(event.key)) return;
+      event.preventDefault();
+      const row = grip.closest('[data-sort-id]');
+      const entry = row.closest('li');
+      const before = event.key === 'ArrowUp';
+      const sibling = before ? entry.previousElementSibling : entry.nextElementSibling;
+      const anchor = sibling?.matches('[data-sort-id]') ? sibling : sibling?.querySelector('[data-sort-id]');
+      if (anchor) finishTaskMove(row.dataset.sortId, {
+        anchorId: anchor.dataset.sortId,
+        folderId: entry.parentElement.dataset.folderList ?? null,
+        side: before ? 'before' : 'after'
+      });
+    });
+    byId('folder-name').addEventListener('input', () => byId('folder-name').setCustomValidity(''));
+    byId('folder-form').addEventListener('submit', (event) => {
+      event.preventDefault();
+      const input = byId('folder-name');
+      const name = input.value.trim();
+      if (!name) {
+        input.setCustomValidity(tr('请输入文件夹名称。', 'Enter a folder name.'));
+        input.reportValidity();
+        return;
+      }
+      const folder = state.folders.find((item) => item.id === editingFolderId);
+      if (folder) folder.name = name;
+      else {
+        const id = newId();
+        state.folders.push({ id, name, collapsed: false });
+        state.taskOrder.push(id);
+      }
+      byId('folder-dialog').close();
+      saveState();
+      renderTasks();
+      byId('add-folder').focus();
+      playButtonClick(true);
+    });
+    byId('remove-folder').addEventListener('click', () => {
+      const id = editingFolderId;
+      const entries = state.tasks.filter((task) => task.folderId === id);
+      const childIds = new Set(entries.map((task) => task.id));
+      const children = state.taskOrder.filter((itemId) => childIds.has(itemId));
+      for (const task of entries) task.folderId = null;
+      state.folders = state.folders.filter((folder) => folder.id !== id);
+      state.taskOrder = state.taskOrder.filter((itemId) => !childIds.has(itemId)).flatMap((itemId) => itemId === id ? children : [itemId]);
+      byId('folder-dialog').close();
+      saveState();
+      renderTasks();
+      byId('add-folder').focus();
+      showToast(tr('文件夹已解散，任务已移回列表。', 'Folder ungrouped. Its tasks are back in the list.'));
     });
     byId('task-name').addEventListener('input', () => byId('task-name').setCustomValidity(''));
     byId('delete-task').addEventListener('click', () => {
@@ -2708,6 +3138,8 @@
         return;
       }
       const note = byId('task-note').value.trim();
+      const folder = state.folders.find((item) => item.id === byId('task-folder').value);
+      const folderId = folder?.id ?? null;
       const task = state.tasks.find(({ id }) => id === editingId);
       if (editingId && !task) {
         byId('task-dialog').close();
@@ -2715,12 +3147,12 @@
         return;
       }
       if (task) {
-        Object.assign(task, { name, note });
+        Object.assign(task, { name, note, folderId });
       } else {
-        const id = newId();
-        state.tasks.push({ id, name, note });
-        if (!state.selectedId) state.selectedId = id;
+        const created = createTask(name, note, folderId);
+        if (!state.selectedId) state.selectedId = created.id;
       }
+      if (folder) folder.collapsed = false;
       saveState();
       playButtonClick(true);
       byId('task-dialog').close();
@@ -2728,7 +3160,8 @@
       renderTimer();
       if (view === 'report') renderReport();
       showToast(task ? tr('任务已更新。', 'Task updated.') : tr('任务已添加。', 'Task added.'));
-      if (task) byId('tasks').querySelector(`[data-edit-task="${task.id}"]`)?.focus();
+      if (task) byId('tasks').querySelector(`[data-edit-task="${CSS.escape(task.id)}"]`)?.focus();
+      else if (folder) byId('tasks').querySelector(`[data-folder-add="${CSS.escape(folder.id)}"]`)?.focus();
       else byId('add-task').focus();
     });
 
@@ -2799,9 +3232,12 @@
     });
 
     function refresh() {
+      if (nativeTimer?.isAppVisible && !nativeTimer.isAppVisible()) return;
       const now = new Date();
       syncNativeControls();
       if (settleTimer(now.getTime())) settleTimer(now.getTime());
+      syncBackgroundSound(now.getTime());
+      flushChime(now.getTime());
       if (state.breakAlert || byId('break-alarm').open) syncBreakAlarm(now.getTime());
       if (state.timer.status === 'running') renderClock(now.getTime());
       if (displayedDay !== now.toDateString()) {
@@ -2813,6 +3249,7 @@
     window.addEventListener('storage', (event) => {
       if (event.key !== STORAGE_KEY) return;
       state = loadState();
+      syncBackgroundSound();
       applyLanguage();
       renderTasks();
       renderSidebar();
@@ -2820,9 +3257,16 @@
       renderToday();
       if (view === 'report') renderReport();
     });
-    document.addEventListener('visibilitychange', () => { if (document.hidden) cancelHold(); refresh(); syncDial(); });
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden) {
+        cancelHold();
+        cancelTaskDrag();
+      } else restoreRunningAudio();
+      refresh();
+      syncDial();
+    });
     function restoreRunningAudio() {
-      if (state.settings.sound && (state.timer.status === 'running' || state.breakAlert) && audioContext?.state !== 'running') unlockAudio();
+      if (state.settings.sound && (state.timer.status === 'running' || state.breakAlert || pendingChime !== undefined) && audioContext?.state !== 'running') unlockAudio();
     }
     const launch = byId('launch');
     launch.addEventListener('animationend', (event) => {
@@ -2832,7 +3276,7 @@
       launch.hidden = true;
       if (event.isTrusted) restoreRunningAudio();
       const button = event.target.closest('button');
-      if (!button || button.matches(':disabled, [type="submit"], #toggle-timer, #finish-timer, #reset-cycle, #confirm-action, #confirm-delete-task')) return;
+      if (!button || button.matches(':disabled, [type="submit"], .task-grip, #toggle-timer, #finish-timer, #reset-cycle, #confirm-action, #confirm-delete-task')) return;
       if (event.isTrusted) playButtonClick();
     }, true);
     document.addEventListener('pointerdown', () => {
