@@ -4,6 +4,8 @@
     <string name="offline_page_error">无法打开一刻，请重新安装应用。</string>
     <style name="YikeTheme" parent="android:style/Theme.Material.NoActionBar">
         <item name="android:windowBackground">#A33948</item>
+        <item name="android:windowSplashScreenBackground">#A33948</item>
+        <item name="android:windowSplashScreenAnimatedIcon">@android:color/transparent</item>
         <item name="android:statusBarColor">#35232F</item>
         <item name="android:navigationBarColor">#35232F</item>
         <item name="android:windowLightStatusBar">false</item>

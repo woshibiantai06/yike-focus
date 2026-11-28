@@ -248,29 +248,32 @@
     }
     .launch {
       position: fixed; inset: 0; z-index: 40; display: grid; place-items: center; pointer-events: none;
-      background: radial-gradient(ellipse at 50% 44%, #bd5262, transparent 68%), #a33948;
-      animation: launch-out 1.8s var(--ease) both;
+      overflow: hidden; background: #a33948; transition: opacity .28s var(--ease);
     }
-    .launch-brand { display: grid; justify-items: center; gap: 12px; animation: launch-rise .62s var(--ease) both; }
-    .launch-mark { display: block; width: 86px; height: 86px; color: #fff2e9; }
-    .launch-track { opacity: .17; }
-    .launch-stroke, .launch-dot {
-      animation-duration: 1.08s; animation-delay: .12s;
-      animation-timing-function: cubic-bezier(.42, .05, .26, .98); animation-fill-mode: both;
+    :root:has(.launch:not([hidden])) { overflow: hidden; }
+    .launch[data-finished] { opacity: 0; }
+    .launch-paper, .launch-film { position: absolute; inset: 0; width: 100%; height: 100%; }
+    .launch-wave {
+      transform-box: view-box;
+      animation: launch-wash .70s cubic-bezier(.48, .10, .53, .94) both;
     }
-    .launch-stroke { stroke-dasharray: 88 100; animation-name: launch-draw; }
-    .launch-dot { transform-origin: 40px 40px; animation-name: launch-orbit; }
-    .launch-name { font-size: 21px; font-weight: 750; letter-spacing: .24em; padding-inline-start: .24em; }
-    @keyframes launch-out {
-      0%, 78% { opacity: 1; }
-      100% { opacity: 0; visibility: hidden; }
+    .launch-film {
+      display: grid; place-items: center; opacity: 0; transition: opacity .12s ease-out;
+      background: linear-gradient(111deg, #fff0cf 22%, #fdead0 48%, #f7dcb5 78%);
     }
-    @keyframes launch-rise {
-      from { opacity: 0; transform: translateY(6px) scale(.94); }
-      to { opacity: 1; transform: none; }
+    .launch[data-playing] .launch-film { opacity: 1; }
+    .launch-video {
+      display: block; width: min(100%, 56.21dvh); height: 100%; object-fit: cover;
     }
-    @keyframes launch-draw { from { stroke-dasharray: 0 100; } }
-    @keyframes launch-orbit { to { transform: rotate(316.8deg); } }
+    @media (min-aspect-ratio: 480/854) {
+      .launch-video { mask-image: linear-gradient(to right, transparent, black 13%, black 87%, transparent); }
+    }
+    @keyframes launch-wash {
+      0%, 11% { transform: translateY(114%); }
+      78% { transform: translateY(-38%); }
+      90% { transform: translateY(-29%); }
+      100% { transform: translateY(-34%); }
+    }
     .shell { display: grid; grid-template-columns: var(--rail-width) minmax(0, 1fr); min-height: 100dvh; transition: grid-template-columns .5s var(--ease); }
     .shell[data-collapsed="true"] { grid-template-columns: 0px minmax(0, 1fr); }
     :root:not([data-ready]) .shell { transition: none; }
@@ -937,15 +940,17 @@
 <body>
   <div class="desktop-cloth" id="desktop-cloth" aria-hidden="true" hidden><div class="cloth-contact"></div></div>
   <div class="launch" id="launch" aria-hidden="true">
-    <div class="launch-brand">
-      <svg class="launch-mark" viewBox="0 0 80 80" fill="none">
-        <g transform="rotate(-48 40 40)">
-          <circle class="launch-track" cx="40" cy="40" r="28" stroke="currentColor" stroke-width="2"/>
-          <circle class="launch-stroke" cx="40" cy="40" r="28" pathLength="100" stroke="currentColor" stroke-width="3.4" stroke-linecap="round"/>
-          <g class="launch-dot"><circle cx="68" cy="40" r="3.4" fill="currentColor"/></g>
-        </g>
-      </svg>
-      <span class="launch-name">一刻</span>
+    <svg class="launch-paper" viewBox="0 0 1000 1000" preserveAspectRatio="none">
+      <defs>
+        <linearGradient id="launch-cream" x1="0%" y1="0%" x2="100%" y2="46%">
+          <stop stop-color="#fff0cf"/><stop offset=".50" stop-color="#fdead0"/><stop offset="1" stop-color="#f7dcb5"/>
+        </linearGradient>
+      </defs>
+      <path class="launch-wave" fill="#f9d5a8" d="M-45 61C118-66 247-26 412 71S767 227 1045 112V2400H-45Z"/>
+      <path class="launch-wave" id="launch-wave" fill="url(#launch-cream)" d="M-45 78C118-49 247-9 412 88S767 244 1045 129V2400H-45Z"/>
+    </svg>
+    <div class="launch-film">
+      <video class="launch-video" id="launch-video" src="assets/launch.mp4" playsinline preload="auto" tabindex="-1"></video>
     </div>
   </div>
   <div class="shell" id="shell" data-view="timer">
@@ -3341,6 +3346,7 @@
     });
     document.addEventListener('visibilitychange', () => {
       if (document.hidden) {
+        dismissLaunch();
         cancelHold();
         cancelTaskDrag();
       } else restoreRunningAudio();
@@ -3351,22 +3357,63 @@
       if (state.settings.sound && (state.timer.status === 'running' || state.breakAlert || pendingChime !== undefined) && audioContext?.state !== 'running') unlockAudio();
     }
     const launch = byId('launch');
-    launch.addEventListener('animationend', (event) => {
-      if (event.target === launch) launch.hidden = true;
+    const launchVideo = byId('launch-video');
+    let launchTimeout;
+
+    function dismissLaunch() {
+      if (launch.hidden) return;
+      clearTimeout(launchTimeout);
+      launch.hidden = true;
+      launchVideo.pause();
+    }
+
+    async function playLaunchVideo() {
+      if (launch.hidden) return;
+      launchVideo.muted = !state.settings.sound;
+      try {
+        await launchVideo.play();
+      } catch (error) {
+        if (launch.hidden) return;
+        if (error.name === 'NotAllowedError' && !launchVideo.muted) {
+          launchVideo.muted = true;
+          try {
+            await launchVideo.play();
+            return;
+          } catch {
+            // A browser without local video support can still open the timer.
+          }
+        }
+        dismissLaunch();
+      }
+    }
+
+    byId('launch-wave').addEventListener('animationend', playLaunchVideo);
+    launchVideo.addEventListener('playing', () => {
+      if (!launch.hidden) launch.setAttribute('data-playing', '');
+    });
+    launchVideo.addEventListener('ended', () => {
+      if (launch.hidden) return;
+      launch.setAttribute('data-finished', '');
+      clearTimeout(launchTimeout);
+      launchTimeout = setTimeout(dismissLaunch, 280);
+    });
+    launchVideo.addEventListener('error', dismissLaunch);
+    reducedMotion.addEventListener('change', () => {
+      if (reducedMotion.matches) dismissLaunch();
     });
     document.addEventListener('click', (event) => {
-      launch.hidden = true;
+      dismissLaunch();
       if (event.isTrusted) restoreRunningAudio();
       const button = event.target.closest('button');
       if (!button || button.matches(':disabled, [type="submit"], .task-grip, #toggle-timer, #finish-timer, #reset-cycle, #confirm-action, #confirm-delete-task')) return;
       if (event.isTrusted) playButtonClick();
     }, true);
     document.addEventListener('pointerdown', () => {
-      launch.hidden = true;
+      dismissLaunch();
       document.documentElement.dataset.pointerFocus = '';
     }, { capture: true, passive: true });
     document.addEventListener('keydown', (event) => {
-      launch.hidden = true;
+      dismissLaunch();
       if (event.key === 'Tab' || event.key === 'Escape' || event.key.startsWith('Arrow')) {
         delete document.documentElement.dataset.pointerFocus;
       }
@@ -3480,6 +3527,8 @@
     renderTimer();
     renderToday();
     refresh();
+    if (reducedMotion.matches || document.hidden || state.timer.status === 'running' || state.breakAlert) dismissLaunch();
+    else launchTimeout = setTimeout(dismissLaunch, 6800);
     setupDesktopCloth();
     requestAnimationFrame(() => { document.documentElement.dataset.ready = ''; });
     setInterval(refresh, 200);

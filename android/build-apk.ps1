@@ -56,7 +56,17 @@ foreach ($folder in @($assets, $launcher, (Join-Path $resources 'values'), $clas
     New-Item -ItemType Directory -Path $folder -Force | Out-Null
 }
 $stagedPage = Join-Path $assets 'index.html'
-Copy-Item -LiteralPath $sourcePage -Destination $stagedPage
+if ($fromPublicRepo) {
+    $launchClip = Join-Path $parent 'assets/launch.mp4'
+    $page = [IO.File]::ReadAllText($sourcePage)
+    $launchSource = 'src="assets/launch.mp4"'
+    if (-not $page.Contains($launchSource)) { throw 'The launch video source is missing from index.html.' }
+    $embeddedVideo = [Convert]::ToBase64String([IO.File]::ReadAllBytes($launchClip))
+    $page = $page.Replace($launchSource, ('src="data:video/mp4;base64,' + $embeddedVideo + '"'))
+    [IO.File]::WriteAllText($stagedPage, $page)
+} else {
+    Copy-Item -LiteralPath $sourcePage -Destination $stagedPage
+}
 Copy-Item -LiteralPath $appIcon -Destination (Join-Path $launcher 'yike_launcher.png')
 Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'res/values/app.xml') -Destination (Join-Path $resources 'values/app.xml')
 $drawable = New-Item -ItemType Directory -Force -Path (Join-Path $resources 'drawable')

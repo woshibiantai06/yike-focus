@@ -49,7 +49,7 @@ An offline, ad-free Pomodoro timer with count-up sessions, task notes, and focus
 
 ## 开发 · Build from source
 
-Open `index.html` directly to develop the timer. The Android build embeds that exact file.
+Open `index.html` directly to develop the timer. The build embeds the launch video in the HTML and uses the same self-contained page for Android and desktop.
 
 在 Windows 上构建 Android 包需要 PowerShell、JDK 17 或更高版本、Android SDK Platform 34 和 Build Tools 36.1.0。设置 `JAVA_HOME`，或向脚本传入 `-Jdk`。若 SDK 不在默认位置，可传入 `-Sdk`。
 

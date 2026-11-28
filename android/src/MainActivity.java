@@ -48,7 +48,7 @@ public final class MainActivity extends Activity {
             settings.setAllowFileAccess(false);
             settings.setAllowContentAccess(false);
             settings.setBlockNetworkLoads(true);
-            settings.setMediaPlaybackRequiresUserGesture(true);
+            settings.setMediaPlaybackRequiresUserGesture(false);
             settings.setUseWideViewPort(true);
             webView.setWebViewClient(new OfflineClient());
             webView.addJavascriptInterface(new TimerBridge(), "YikeAndroid");
