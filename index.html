@@ -254,7 +254,9 @@
     .launch[data-finished] { opacity: 0; }
     .launch-paper, .launch-film { position: absolute; inset: 0; width: 100%; height: 100%; }
     .launch-wave {
-      transform-box: view-box;
+      transform-box: view-box; transform: translateY(114%);
+    }
+    .launch[data-washing] .launch-wave {
       animation: launch-wash .70s cubic-bezier(.48, .10, .53, .94) both;
     }
     .launch-film {
@@ -265,6 +267,15 @@
     .launch-video {
       display: block; width: min(100%, 56.21dvh); height: 100%; object-fit: cover;
     }
+    .launch-sound {
+      position: absolute; inset-inline: 0; bottom: max(20px, env(safe-area-inset-bottom)); margin-inline: auto; width: max-content;
+      display: inline-flex; align-items: center; gap: 7px; min-height: 44px; padding: 0 15px;
+      border: 1px solid #f7e2d794; border-radius: 999px; color: #fff9ef; background: #5c2929;
+      font-size: .84rem; font-weight: 600; pointer-events: auto;
+      transition: background .2s ease;
+    }
+    .launch-sound:hover { background: #71343a; }
+    .launch-sound svg { width: 16px; height: 16px; }
     @media (min-aspect-ratio: 480/854) {
       .launch-video { mask-image: linear-gradient(to right, transparent, black 13%, black 87%, transparent); }
     }
@@ -939,8 +950,8 @@
 </head>
 <body>
   <div class="desktop-cloth" id="desktop-cloth" aria-hidden="true" hidden><div class="cloth-contact"></div></div>
-  <div class="launch" id="launch" aria-hidden="true">
-    <svg class="launch-paper" viewBox="0 0 1000 1000" preserveAspectRatio="none">
+  <div class="launch" id="launch">
+    <svg class="launch-paper" viewBox="0 0 1000 1000" preserveAspectRatio="none" aria-hidden="true">
       <defs>
         <linearGradient id="launch-cream" x1="0%" y1="0%" x2="100%" y2="46%">
           <stop stop-color="#fff0cf"/><stop offset=".50" stop-color="#fdead0"/><stop offset="1" stop-color="#f7dcb5"/>
@@ -949,9 +960,16 @@
       <path class="launch-wave" fill="#f9d5a8" d="M-45 61C118-66 247-26 412 71S767 227 1045 112V2400H-45Z"/>
       <path class="launch-wave" id="launch-wave" fill="url(#launch-cream)" d="M-45 78C118-49 247-9 412 88S767 244 1045 129V2400H-45Z"/>
     </svg>
-    <div class="launch-film">
+    <div class="launch-film" aria-hidden="true">
       <video class="launch-video" id="launch-video" src="assets/launch.mp4" playsinline preload="auto" tabindex="-1"></video>
     </div>
+    <audio id="launch-wave-sound" src="assets/launch-wave.wav" preload="auto"></audio>
+    <button class="launch-sound" type="button" id="enable-launch-sound" hidden>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M4 9v6h4l5 4V5L8 9H4Z M16 9a4 4 0 0 1 0 6 M19 6a8 8 0 0 1 0 12"/>
+      </svg>
+      有声播放
+    </button>
   </div>
   <div class="shell" id="shell" data-view="timer">
     <div class="drawer-backdrop" id="drawer-backdrop" aria-hidden="true"></div>
@@ -1149,7 +1167,7 @@
         <label class="field">专注倒计时结束提示<select id="focus-alert"><option value="chime">轻轻叮一声</option><option value="alarm">持续响铃并震动</option></select></label>
         <label class="field" id="focus-after-field">轻提示之后<select id="focus-after"><option value="continue">接着正向计时</option><option value="rest">自动开始休息</option></select></label>
       </div>
-      <label class="check-field"><input type="checkbox" id="sounds">计时开始、暂停和完成音</label>
+      <label class="check-field"><input type="checkbox" id="sounds">计时和开机动画声音</label>
       <label class="check-field"><input type="checkbox" id="button-sounds">按钮轻触音</label>
       <label class="check-field" id="floating-field" hidden><input type="checkbox" id="floating-timer">在其他应用上显示悬浮计时</label>
       <label class="field language-field">语言 / Language
@@ -1246,7 +1264,7 @@
       '写下这一轮想完成的具体事项': 'What would you like to finish?',
       '删除任务': 'Delete task', '删除任务？': 'Delete this task?', '取消': 'Cancel', '保存任务': 'Save task',
       '计时设置': 'Timer settings', '每个阶段的时长（分钟）': 'Duration in minutes',
-      '计时开始、暂停和完成音': 'Timer sounds', '按钮轻触音': 'Button sounds',
+      '计时和开机动画声音': 'Timer and startup sounds', '按钮轻触音': 'Button sounds', '有声播放': 'Play with sound',
       '在其他应用上显示悬浮计时': 'Floating timer over other apps',
       '保存设置': 'Save settings', '继续本轮': 'Keep session'
     };
@@ -3357,24 +3375,55 @@
       if (state.settings.sound && (state.timer.status === 'running' || state.breakAlert || pendingChime !== undefined) && audioContext?.state !== 'running') unlockAudio();
     }
     const launch = byId('launch');
+    const launchWave = byId('launch-wave');
+    const launchWaveSound = byId('launch-wave-sound');
     const launchVideo = byId('launch-video');
+    const launchSoundButton = byId('enable-launch-sound');
     let launchTimeout;
+    let launchRun = 0;
 
     function dismissLaunch() {
       if (launch.hidden) return;
       clearTimeout(launchTimeout);
+      launchRun += 1;
       launch.hidden = true;
+      launchWaveSound.pause();
       launchVideo.pause();
+    }
+
+    function startLaunch() {
+      clearTimeout(launchTimeout);
+      const run = ++launchRun;
+      launchSoundButton.hidden = true;
+      if (launch.hasAttribute('data-washing')) {
+        launch.removeAttribute('data-washing');
+        launch.removeAttribute('data-playing');
+        launchVideo.pause();
+        launchVideo.currentTime = 0;
+        launchWaveSound.pause();
+        launchWaveSound.currentTime = 0;
+        // Apply the resting state before restarting the CSS animation.
+        void launchWave.getBoundingClientRect();
+      }
+      launch.setAttribute('data-washing', '');
+      launchTimeout = setTimeout(dismissLaunch, 6800);
+      if (state.settings.sound) {
+        launchWaveSound.play().catch((error) => {
+          if (run === launchRun && error.name === 'NotAllowedError') launchSoundButton.hidden = false;
+        });
+      }
     }
 
     async function playLaunchVideo() {
       if (launch.hidden) return;
+      const run = launchRun;
       launchVideo.muted = !state.settings.sound;
       try {
         await launchVideo.play();
       } catch (error) {
-        if (launch.hidden) return;
+        if (run !== launchRun) return;
         if (error.name === 'NotAllowedError' && !launchVideo.muted) {
+          launchSoundButton.hidden = false;
           launchVideo.muted = true;
           try {
             await launchVideo.play();
@@ -3383,16 +3432,18 @@
             // A browser without local video support can still open the timer.
           }
         }
-        dismissLaunch();
+        if (run === launchRun) dismissLaunch();
       }
     }
 
-    byId('launch-wave').addEventListener('animationend', playLaunchVideo);
+    launchSoundButton.addEventListener('click', startLaunch);
+    launchWave.addEventListener('animationend', playLaunchVideo);
     launchVideo.addEventListener('playing', () => {
-      if (!launch.hidden) launch.setAttribute('data-playing', '');
+      if (!launch.hidden && !launchVideo.paused) launch.setAttribute('data-playing', '');
     });
     launchVideo.addEventListener('ended', () => {
-      if (launch.hidden) return;
+      if (launch.hidden || !launchVideo.ended) return;
+      launchSoundButton.hidden = true;
       launch.setAttribute('data-finished', '');
       clearTimeout(launchTimeout);
       launchTimeout = setTimeout(dismissLaunch, 280);
@@ -3402,18 +3453,21 @@
       if (reducedMotion.matches) dismissLaunch();
     });
     document.addEventListener('click', (event) => {
+      if (launchSoundButton.contains(event.target)) return;
       dismissLaunch();
       if (event.isTrusted) restoreRunningAudio();
       const button = event.target.closest('button');
       if (!button || button.matches(':disabled, [type="submit"], .task-grip, #toggle-timer, #finish-timer, #reset-cycle, #confirm-action, #confirm-delete-task')) return;
       if (event.isTrusted) playButtonClick();
     }, true);
-    document.addEventListener('pointerdown', () => {
-      dismissLaunch();
+    document.addEventListener('pointerdown', (event) => {
+      if (!launchSoundButton.contains(event.target)) dismissLaunch();
       document.documentElement.dataset.pointerFocus = '';
     }, { capture: true, passive: true });
     document.addEventListener('keydown', (event) => {
-      dismissLaunch();
+      const useLaunchSound = !launch.hidden && !launchSoundButton.hidden && (event.key === 'Tab'
+        || (event.target === launchSoundButton && (event.key === 'Enter' || event.key === ' ')));
+      if (!useLaunchSound) dismissLaunch();
       if (event.key === 'Tab' || event.key === 'Escape' || event.key.startsWith('Arrow')) {
         delete document.documentElement.dataset.pointerFocus;
       }
@@ -3528,7 +3582,7 @@
     renderToday();
     refresh();
     if (reducedMotion.matches || document.hidden || state.timer.status === 'running' || state.breakAlert) dismissLaunch();
-    else launchTimeout = setTimeout(dismissLaunch, 6800);
+    else startLaunch();
     setupDesktopCloth();
     requestAnimationFrame(() => { document.documentElement.dataset.ready = ''; });
     setInterval(refresh, 200);

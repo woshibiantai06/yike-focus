@@ -57,12 +57,15 @@ foreach ($folder in @($assets, $launcher, (Join-Path $resources 'values'), $clas
 }
 $stagedPage = Join-Path $assets 'index.html'
 if ($fromPublicRepo) {
-    $launchClip = Join-Path $parent 'assets/launch.mp4'
     $page = [IO.File]::ReadAllText($sourcePage)
-    $launchSource = 'src="assets/launch.mp4"'
-    if (-not $page.Contains($launchSource)) { throw 'The launch video source is missing from index.html.' }
-    $embeddedVideo = [Convert]::ToBase64String([IO.File]::ReadAllBytes($launchClip))
-    $page = $page.Replace($launchSource, ('src="data:video/mp4;base64,' + $embeddedVideo + '"'))
+    $launchMedia = @{ 'assets/launch.mp4' = 'video/mp4'; 'assets/launch-wave.wav' = 'audio/wav' }
+    foreach ($relativePath in $launchMedia.Keys) {
+        $source = 'src="' + $relativePath + '"'
+        if (-not $page.Contains($source)) { throw "Missing launch media reference in index.html: $relativePath" }
+        $encoded = [Convert]::ToBase64String([IO.File]::ReadAllBytes((Join-Path $parent $relativePath)))
+        $embeddedSource = 'src="data:' + $launchMedia[$relativePath] + ';base64,' + $encoded + '"'
+        $page = $page.Replace($source, $embeddedSource)
+    }
     [IO.File]::WriteAllText($stagedPage, $page)
 } else {
     Copy-Item -LiteralPath $sourcePage -Destination $stagedPage
